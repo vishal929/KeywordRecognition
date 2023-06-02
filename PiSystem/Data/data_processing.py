@@ -22,7 +22,7 @@ def load_audio_file(filename):
     return np.array(data.get_array_of_samples(),dtype=np.float32)
 
 # pipeline to load train and test data (we are not using a validation set since our problem is small in scope)
-def get_dataset():
+def get_dataset(augmentation=True):
     # firstly getting filenames for train and test data
     train_files = os.path.join(ROOT_DIR,"Data","Dataset","Train","**","*.m4a")
     test_files = os.path.join(ROOT_DIR, "Data", "Dataset", "Test", "**", "*.m4a")
@@ -42,7 +42,8 @@ def get_dataset():
     test = test.map(lambda data, label: (data[:SAMPLING_RATE * 3], label))
 
     # training augmentation on audio clips for the training set
-    train = train.map(lambda data, label: (tf.py_function(augment_train,inp=[data],Tout=[tf.float32]), label))
+    if augmentation:
+        train = train.map(lambda data, label: (tf.py_function(augment_train,inp=[data],Tout=[tf.float32]), label))
 
     # from experimenting with scaling, scaling the raw sound has an exponential affect on volume
     # I find that a random scale of 0.5 to 3 would be suitable (from quiet but still audible to loud, but not too loud)
@@ -70,7 +71,11 @@ def get_dataset():
                        pad_end=False)
     ), label))
 
-    # we end up with data = (5 , 24001), label samples
+    # we end up with data = (1, 5 , 24001), label samples
+    # unsqueeze on last dim so we have (H,W,C) structure which provides maximum compatibility with CPUs in Tensorflow
+    train =train.map(lambda data, label: (tf.expand_dims(tf.squeeze(data),axis=-1),label))
+    test = test.map(lambda data, label: (tf.expand_dims(tf.squeeze(data),axis=-1), label))
+
 
     return train, test
 
