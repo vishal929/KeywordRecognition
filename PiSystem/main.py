@@ -1,16 +1,11 @@
-# This is a sample Python script.
+# main will hold the inference loop of the pi
+'''
+    1) detect speech in 3 second windows of "arduino"
+    2) if arduino is detected, start window to detect for the other keywords like "Stairs" or "Bar"
+    3) if within the detection window we detect a keyword, we send a message to the corresponding microcontroller
+    4) hopefully microcontroller receives the message properly and flips their designated switch
+'''
 
-# Press Shift+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
-
-
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press Ctrl+F8 to toggle the breakpoint.
-
-
-# Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    print_hi('PyCharm')
+    print('PyCharm')
 
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
