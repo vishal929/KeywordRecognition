@@ -82,7 +82,6 @@ def get_dataset(augmentation=True):
 # logic for mapping filename (absolute) to class label
 def map_name_to_label_and_data(filename):
     filename_str = filename.numpy().decode('utf-8')
-    print(filename_str)
     path = Path(filename_str)
     classname = path.parent.name
 
@@ -94,18 +93,27 @@ def augment_train(train_example):
     scale = tf.random.uniform(shape=[1],minval=0,maxval=2.5)+0.5
     augmented = tf.multiply(train_example,scale)
 
+    # if the audio clip is less than 3 seconds (which most are), we can randomly place this in a window of 3 seconds
+    window = np.zeros(shape=(3*SAMPLING_RATE),dtype=np.float32)
+
+    # choose a random start index from 0 to len(window)-1-len(train_example)
+    rand_index = tf.random.uniform(shape=[1],minval=0,maxval = 3*SAMPLING_RATE -1 - train_example.shape[0],
+                                   dtype=tf.int32).numpy()[0]
+    window[rand_index:rand_index+train_example.shape[0]] = augmented.numpy()
+    augmented = tf.convert_to_tensor(window,dtype=tf.float32)
+
     # random noise addition (additive white noise model)
     sumsquare =tf.reduce_sum(tf.pow(train_example,2.0))
     err = sumsquare/ train_example.shape[0]
     stderr = np.sqrt(err)
 
-    noise = tf.random.normal(mean=0.0,stddev=stderr,shape=train_example.shape)
-    augmented = tf.add(augmented,noise)
+    # adding in the random noise
+    noise = tf.random.normal(mean=0.0, stddev=stderr, shape=augmented.shape)
+    augmented = tf.add(augmented, noise)
     return augmented
 
 
 
-get_dataset()
 
 
 
