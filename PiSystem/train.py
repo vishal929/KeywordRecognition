@@ -8,9 +8,11 @@ from Models.model import build_model
 from Data.data_processing import get_dataset, augment_train, stft_sound, random_window
 from datetime import datetime
 import os
+from constants import ROOT_DIR
 
+CHECKPOINT_DIR = os.path.join(ROOT_DIR,"Models","Saved_Checkpoints")
 
-def train(model_checkpoint=None, batch_size=1, learning_rate = 0.01, epochs=200):
+def train(model_checkpoint=None, batch_size=1, learning_rate = 0.001, epochs=200):
     # forcing cpu (for some reason my laptop gpu is failing)
     # Hide GPU from visible devices
     tf.config.set_visible_devices([], 'GPU')
@@ -22,6 +24,14 @@ def train(model_checkpoint=None, batch_size=1, learning_rate = 0.01, epochs=200)
 
     model.optimizer.learning_rate.assign(learning_rate)
     print("learning rate: " + str(model.optimizer.learning_rate))
+
+    # setting up callback to save the best model based on validation accuracy
+    model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
+        filepath=CHECKPOINT_DIR,
+        save_weights_only=True,
+        monitor='val_sparse_categorical_accuracy',
+        mode='max',
+        save_best_only=True)
 
     # we need to adapt the normalization layer if we did not load weights
     if model_checkpoint is None:
@@ -84,7 +94,7 @@ def train(model_checkpoint=None, batch_size=1, learning_rate = 0.01, epochs=200)
             )
 
     # fitting (we are using the test data as validation here :) )
-    model.fit(train, validation_data=test, epochs=epochs, verbose=2)
+    model.fit(train, validation_data=test, epochs=epochs, verbose=2, callbacks=[model_checkpoint_callback])
 
 
 train()
