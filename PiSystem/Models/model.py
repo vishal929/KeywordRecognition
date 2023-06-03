@@ -6,18 +6,19 @@ from PiSystem.constants import LEARN_MAP
 def conv_block(input, num_filters, kernel_size, conv_stride, pool_size, dropout_rate=0.1, pool_stride=None):
     # conv
     x = keras.layers.Conv2D(filters=num_filters, kernel_size=kernel_size, strides=conv_stride, activation=None)(input)
-    print("after conv shape: " + str(x.shape))
+    #print("after conv shape: " + str(x.shape))
+    x = keras.layers.BatchNormalization()(x)
     x = keras.layers.LeakyReLU()(x)
 
     # conv
     x = keras.layers.Conv2D(filters=num_filters, kernel_size=kernel_size, strides=conv_stride, activation=None)(input)
-    print("after conv shape: " + str(x.shape))
+    #print("after conv shape: " + str(x.shape))
     x = keras.layers.BatchNormalization()(x)
     x = keras.layers.LeakyReLU()(x)
 
     # pooling
     x = keras.layers.MaxPool2D(pool_size=pool_size, strides=pool_stride)(x)
-    print("after pool shape: " + str(x.shape))
+    #print("after pool shape: " + str(x.shape))
 
     # dropout at low rate
     x = keras.layers.Dropout(rate=dropout_rate)(x)
@@ -31,9 +32,9 @@ def conv_block(input, num_filters, kernel_size, conv_stride, pool_size, dropout_
 def build_model(checkPointPath=None):
     # only need a small architecture for keywords
     # B x H x W x C
-    # input should already be normalized! (we can use a normalization layer and adapt() for this)
     input = keras.Input(shape=(5, 24001, 1))
-    x = input
+    # normalization layer (we need to call adapt on this before training and saving!)
+    x = keras.layers.Normalization(axis=-1)(input) # axis=-1 means we normalize along the channel dimension
     # number of convolutional blocks
     num_blocks = 4
     for i in range(num_blocks):
@@ -52,16 +53,26 @@ def build_model(checkPointPath=None):
     model = keras.Model(input, output)
 
     # defining some metrics and a loss function
-    loss = tf.keras.losses.CategoricalCrossentropy(from_logits=True)
+    loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
 
-    model.compile(optimizer="adam", loss=loss)
+    optimizer = keras.optimizers.Adam(learning_rate=0.001)
+    model.compile(optimizer=optimizer, loss=loss, metrics=[
+        keras.metrics.SparseCategoricalAccuracy()
+    ])
+
+    # if we have saved weights, load them
+    if checkPointPath:
+        model.load_weights(checkPointPath)
+
     return model
 
 
 # testing the model with input
+'''
 model = build_model()
 test_input = tf.ones(shape=(2, 5, 24001, 1))
 out = model.predict(test_input)
 print(out.shape)
-# 606,854 parameters, this is pretty lightweight hopefully it works nicely for the pi!
+# 606,857 parameters, this is pretty lightweight hopefully it works nicely for the pi!
 print(model.summary())
+'''

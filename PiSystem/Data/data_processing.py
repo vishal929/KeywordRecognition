@@ -22,7 +22,7 @@ def load_audio_file(filename):
     return np.array(data.get_array_of_samples(),dtype=np.float32)
 
 # pipeline to load train and test data (we are not using a validation set since our problem is small in scope)
-def get_dataset(augmentation=True):
+def get_dataset():
     # firstly getting filenames for train and test data
     train_files = os.path.join(ROOT_DIR,"Data","Dataset","Train","**","*.m4a")
     test_files = os.path.join(ROOT_DIR, "Data", "Dataset", "Test", "**", "*.m4a")
@@ -41,13 +41,73 @@ def get_dataset(augmentation=True):
     train = train.map(lambda data,label: (data[:SAMPLING_RATE*3],label))
     test = test.map(lambda data, label: (data[:SAMPLING_RATE * 3], label))
 
+    return train, test
+
+
+
+# logic for converting to the frequency domain
+def stft_sound(data):
+    #print('stft sound data shape: ' + str(data.shape))
+    return tf.abs(
+        tf.signal.stft(data, frame_length=SAMPLING_RATE,
+                       frame_step=int(SAMPLING_RATE / 2),
+                       fft_length=SAMPLING_RATE,
+                       pad_end=False)
+    )
+
+# logic for mapping filename (absolute) to class label
+def map_name_to_label_and_data(filename):
+    filename_str = filename.numpy().decode('utf-8')
+    path = Path(filename_str)
+    classname = path.parent.name
+
+    return load_audio_file(filename_str),LEARN_MAP[classname.strip().lower()]
+
+# need to fit samples which are less than 3 seconds long into a window of 3 seconds
+def random_window(example):
+    #print("random window example shape: " + str(example.shape))
+    # if the audio clip is less than 3 seconds (which most are), we can randomly place this in a window of 3 seconds
+    if (example.shape[0]< 3*SAMPLING_RATE):
+        window = np.zeros(shape=(3 * SAMPLING_RATE), dtype=np.float32)
+
+        # choose a random start index from 0 to len(window)-len(train_example)
+        rand_index = tf.random.uniform(shape=[1], minval=0, maxval=3 * SAMPLING_RATE - example.shape[0],
+                                       dtype=tf.int32).numpy()[0]
+        window[rand_index:rand_index + example.shape[0]] = example.numpy()
+        augmented = tf.convert_to_tensor(window, dtype=tf.float32)
+
+        return augmented
+    else:
+        return example
+
+# augmentation to training data to result in a more robust model
+def augment_train(train_example):
+    #print('augment train example shape: ' + str(train_example))
+    # random scaling for volume (from experimental playback I choose a scale from 0.5 to 3)
+    scale = tf.random.uniform(shape=[1],minval=0,maxval=2.5)+0.5
+    augmented = tf.multiply(train_example,scale)
+
+    # random noise addition (additive white noise model)
+    sumsquare =tf.reduce_sum(tf.pow(train_example,2.0))
+    err = sumsquare/ train_example.shape[0]
+    stderr = np.sqrt(err)
+
+    # adding in the random noise
+    noise = tf.random.normal(mean=0.0, stddev=stderr, shape=augmented.shape)
+    augmented = tf.add(augmented, noise)
+    return augmented
+
+
+'''
+    # need to fit clips which are less than 3 seconds long to a window of 3 seconds
+    train = train.map(lambda data,label: (tf.py_function(random_window, inp=[data], Tout=[tf.float32]), label))
+    test = test.map(lambda data, label: (tf.py_function(random_window, inp=[data], Tout=[tf.float32]), label))
+
     # training augmentation on audio clips for the training set
-    if augmentation:
-        train = train.map(lambda data, label: (tf.py_function(augment_train,inp=[data],Tout=[tf.float32]), label))
+    train = train.map(lambda data, label: (tf.py_function(augment_train,inp=[data,augmentation],Tout=[tf.float32]), label))
 
     # from experimenting with scaling, scaling the raw sound has an exponential affect on volume
     # I find that a random scale of 0.5 to 3 would be suitable (from quiet but still audible to loud, but not too loud)
-    '''
     test_sound = AudioSegment(
         data = (next(iter(train))[0].numpy()[-1,:]).astype(np.int16),
         sample_width= SAMPLE_WIDTH,
@@ -55,7 +115,6 @@ def get_dataset(augmentation=True):
         channels=1
     )
     play(test_sound)
-    '''
 
     # applying short time fourier transform to convert to frequency domain
     train = train.map(lambda data,label: (tf.abs(
@@ -78,42 +137,4 @@ def get_dataset(augmentation=True):
 
 
     return train, test
-
-# logic for mapping filename (absolute) to class label
-def map_name_to_label_and_data(filename):
-    filename_str = filename.numpy().decode('utf-8')
-    path = Path(filename_str)
-    classname = path.parent.name
-
-    return load_audio_file(filename_str),LEARN_MAP[classname.strip().lower()]
-
-# augmentation to training data to result in a more robust model
-def augment_train(train_example):
-    # random scaling for volume (from experimental playback I choose a scale from 0.5 to 3)
-    scale = tf.random.uniform(shape=[1],minval=0,maxval=2.5)+0.5
-    augmented = tf.multiply(train_example,scale)
-
-    # if the audio clip is less than 3 seconds (which most are), we can randomly place this in a window of 3 seconds
-    window = np.zeros(shape=(3*SAMPLING_RATE),dtype=np.float32)
-
-    # choose a random start index from 0 to len(window)-1-len(train_example)
-    rand_index = tf.random.uniform(shape=[1],minval=0,maxval = 3*SAMPLING_RATE -1 - train_example.shape[0],
-                                   dtype=tf.int32).numpy()[0]
-    window[rand_index:rand_index+train_example.shape[0]] = augmented.numpy()
-    augmented = tf.convert_to_tensor(window,dtype=tf.float32)
-
-    # random noise addition (additive white noise model)
-    sumsquare =tf.reduce_sum(tf.pow(train_example,2.0))
-    err = sumsquare/ train_example.shape[0]
-    stderr = np.sqrt(err)
-
-    # adding in the random noise
-    noise = tf.random.normal(mean=0.0, stddev=stderr, shape=augmented.shape)
-    augmented = tf.add(augmented, noise)
-    return augmented
-
-
-
-
-
-
+'''
