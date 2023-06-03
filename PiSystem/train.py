@@ -10,9 +10,9 @@ from datetime import datetime
 import os
 from constants import ROOT_DIR
 
-CHECKPOINT_DIR = os.path.join(ROOT_DIR,"Models","Saved_Checkpoints")
+CHECKPOINT_DIR = os.path.join(ROOT_DIR,"Models","Saved_Checkpoints","Current_Checkpoint")
 
-def train(model_checkpoint=None, batch_size=1, learning_rate = 0.001, epochs=200):
+def train(model_checkpoint=None, batch_size=32, learning_rate = 0.001, epochs=200):
     # forcing cpu (for some reason my laptop gpu is failing)
     # Hide GPU from visible devices
     tf.config.set_visible_devices([], 'GPU')
@@ -55,7 +55,6 @@ def train(model_checkpoint=None, batch_size=1, learning_rate = 0.001, epochs=200
 
     train = (train
              .repeat(3)
-             .shuffle(buffer_size=300, reshuffle_each_iteration=True)
              # need to randomly fit clips less than 3s into a 3s window
              .map(lambda data, label: (tf.py_function(random_window, inp=[data], Tout=[tf.float32]), label),
                   num_parallel_calls = tf.data.AUTOTUNE)
@@ -72,6 +71,7 @@ def train(model_checkpoint=None, batch_size=1, learning_rate = 0.001, epochs=200
              .map(lambda data, label: (tf.expand_dims(tf.squeeze(data), axis=-1), label),
                   num_parallel_calls = tf.data.AUTOTUNE
                   )
+             .shuffle(buffer_size=300, reshuffle_each_iteration=True)
              .batch(batch_size=batch_size, num_parallel_calls = tf.data.AUTOTUNE)
              .prefetch(tf.data.AUTOTUNE)
              )
