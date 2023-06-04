@@ -1,37 +1,36 @@
 import tensorflow as tf
-from tensorflow import keras
 from PiSystem.constants import LEARN_MAP
 
 
 def conv_block(input, num_filters, kernel_size, conv_stride, pool_size, dropout_rate=0.1, pool_stride=None,
                padding='same'):
     # conv
-    x = keras.layers.Conv2D(filters=num_filters, padding=padding,
+    x = tf.keras.layers.Conv2D(filters=num_filters, padding=padding,
                             kernel_size=kernel_size, strides=conv_stride, activation=None)(input)
     #print("after conv shape: " + str(x.shape))
-    x = keras.layers.BatchNormalization()(x)
-    x = keras.layers.LeakyReLU()(x)
+    x = tf.keras.layers.BatchNormalization()(x)
+    x = tf.keras.layers.LeakyReLU()(x)
 
     # conv
-    x = keras.layers.Conv2D(filters=num_filters, padding=padding,
+    x = tf.keras.layers.Conv2D(filters=num_filters, padding=padding,
                             kernel_size=kernel_size, strides=conv_stride, activation=None)(x)
     #print("after conv shape: " + str(x.shape))
-    x = keras.layers.BatchNormalization()(x)
-    x = keras.layers.LeakyReLU()(x)
+    x = tf.keras.layers.BatchNormalization()(x)
+    x = tf.keras.layers.LeakyReLU()(x)
 
     # skip connection
-    res = keras.layers.Conv2D(filters=num_filters, padding=padding, kernel_size=(1,1), strides = conv_stride,
+    res = tf.keras.layers.Conv2D(filters=num_filters, padding=padding, kernel_size=(1,1), strides = conv_stride,
                               activation=None)(input)
-    res = keras.layers.BatchNormalization()(res)
-    x = keras.layers.Add()([res,x])
-    x = keras.layers.LeakyReLU()(x)
+    res = tf.keras.layers.BatchNormalization()(res)
+    x = tf.keras.layers.Add()([res,x])
+    x = tf.keras.layers.LeakyReLU()(x)
 
     # pooling across feature dimension
-    x = keras.layers.MaxPool2D(pool_size=pool_size, padding=padding,strides=pool_stride)(x)
+    x = tf.keras.layers.MaxPool2D(pool_size=pool_size, padding=padding,strides=pool_stride)(x)
     #print("after pool shape: " + str(x.shape))
 
     # dropout at low rate
-    x = keras.layers.Dropout(rate=dropout_rate)(x)
+    x = tf.keras.layers.Dropout(rate=dropout_rate)(x)
 
     return x
 
@@ -43,11 +42,11 @@ def build_model(checkPointPath=None):
     # only need a small architecture for keywords
     # the architecture is inspired by resnet but we are using much fewer conv blocks
     # B x H x W x C
-    input = keras.Input(shape=(5, 24001, 1))
+    input = tf.keras.Input(shape=(5, 8001, 1))
     # normalization layer (we need to call adapt on this before training and saving!)
-    x = keras.layers.Normalization(axis=-1)(input) # axis=-1 means we normalize along the channel dimension
+    x = tf.keras.layers.Normalization(axis=-1)(input) # axis=-1 means we normalize along the channel dimension
     # number of convolutional blocks
-    num_blocks = 8
+    num_blocks = 6
     for i in range(num_blocks):
         if i == num_blocks-1:
             x = conv_block(x,num_filters=32 * (i + 1), kernel_size=(3, 3), conv_stride=(1, 1), pool_size=(1, 2),
@@ -56,19 +55,19 @@ def build_model(checkPointPath=None):
             x = conv_block(x,num_filters=32 * (i + 1), kernel_size=(3, 3), conv_stride=(1, 1), pool_size=(1, 2))
 
     # flatten before dense
-    x = keras.layers.Flatten()(x)
+    x = tf.keras.layers.Flatten()(x)
 
     # dense to output
-    output = keras.layers.Dense(len(LEARN_MAP))(x)
+    output = tf.keras.layers.Dense(len(LEARN_MAP))(x)
 
-    model = keras.Model(input, output)
+    model = tf.keras.Model(input, output)
 
     # defining some metrics and a loss function
     loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
 
-    optimizer = keras.optimizers.Adam(learning_rate=0.001)
+    optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
     model.compile(optimizer=optimizer, loss=loss, metrics=[
-        keras.metrics.SparseCategoricalAccuracy()
+        tf.keras.metrics.SparseCategoricalAccuracy()
     ])
 
     # if we have saved weights, load them
