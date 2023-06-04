@@ -12,7 +12,7 @@ from constants import ROOT_DIR
 
 CHECKPOINT_DIR = os.path.join(ROOT_DIR,"Models","Saved_Checkpoints","Current_Checkpoint")
 
-def train(model_checkpoint=None, batch_size=16, learning_rate = 0.001, epochs=300):
+def train(model_checkpoint=None, batch_size=16, learning_rate = 0.0001, epochs=300):
     # forcing cpu (for some reason my laptop gpu is failing)
     # Hide GPU from visible devices
     tf.config.set_visible_devices([], 'GPU')
