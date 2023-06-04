@@ -22,7 +22,9 @@ def conv_block(input, num_filters, kernel_size, conv_stride, pool_size, dropout_
     # skip connection
     res = keras.layers.Conv2D(filters=num_filters, padding=padding, kernel_size=(1,1), strides = conv_stride,
                               activation=None)(input)
+    res = keras.layers.BatchNormalization()(res)
     x = keras.layers.Add()([res,x])
+    x = keras.layers.LeakyReLU()(x)
 
     # pooling across feature dimension
     x = keras.layers.MaxPool2D(pool_size=pool_size, padding=padding,strides=pool_stride)(x)
@@ -45,11 +47,11 @@ def build_model(checkPointPath=None):
     # normalization layer (we need to call adapt on this before training and saving!)
     x = keras.layers.Normalization(axis=-1)(input) # axis=-1 means we normalize along the channel dimension
     # number of convolutional blocks
-    num_blocks = 10
+    num_blocks = 8
     for i in range(num_blocks):
         if i == num_blocks-1:
             x = conv_block(x,num_filters=32 * (i + 1), kernel_size=(3, 3), conv_stride=(1, 1), pool_size=(1, 2),
-                           dropout_rate=0.5)
+                           dropout_rate=0.2)
         else:
             x = conv_block(x,num_filters=32 * (i + 1), kernel_size=(3, 3), conv_stride=(1, 1), pool_size=(1, 2))
 

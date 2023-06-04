@@ -47,7 +47,6 @@ def get_dataset():
 
 # logic for converting to the frequency domain
 def stft_sound(data):
-    #print('stft sound data shape: ' + str(data.shape))
     return tf.abs(
         tf.signal.stft(data, frame_length=SAMPLING_RATE,
                        frame_step=int(SAMPLING_RATE / 2),
@@ -62,6 +61,17 @@ def map_name_to_label_and_data(filename):
     classname = path.parent.name
 
     return load_audio_file(filename_str),LEARN_MAP[classname.strip().lower()]
+
+# just padding the end of a sample to fit 3 seconds in a window
+def pad_window(example):
+    if (example.shape[0]< 3* SAMPLING_RATE):
+        paddings = tf.zeros((1,2))
+        # need to pad end of the sound clip to the desired length
+        paddings = tf.constant([[0,3*SAMPLING_RATE - example.shape[0]]])
+        #paddings[1] = 3* SAMPLING_RATE - example.shape[0]
+        return tf.pad(example,paddings)
+    else:
+        return example
 
 # need to fit samples which are less than 3 seconds long into a window of 3 seconds
 def random_window(example):

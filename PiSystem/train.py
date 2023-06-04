@@ -3,24 +3,24 @@
 # then we can quantize the model and perform optimizations provided in tensorflow lite before loading on the pi
 
 import tensorflow as tf
-from tensorflow import keras
 from Models.model import build_model
-from Data.data_processing import get_dataset, augment_train, stft_sound, random_window
+from Data.data_processing import get_dataset, augment_train, stft_sound, random_window, pad_window
 from datetime import datetime
 import os
 from constants import ROOT_DIR
 
 CHECKPOINT_DIR = os.path.join(ROOT_DIR,"Models","Saved_Checkpoints","Current_Checkpoint")
 
-def train(model_checkpoint=None, batch_size=16, learning_rate = 0.0001, epochs=300):
+def train(model_checkpoint=None, batch_size=1, learning_rate = 0.0001, epochs=300):
     # forcing cpu (for some reason my laptop gpu is failing)
     # Hide GPU from visible devices
-    tf.config.set_visible_devices([], 'GPU')
-    #print(tf.config.list_physical_devices('GPU'))
+    #tf.config.set_visible_devices([], 'GPU')
+    print(tf.config.list_physical_devices('GPU'))
 
     # seeding the random number generator
-    keras.utils.set_random_seed(int(datetime.now().timestamp()))
+    tf.random.set_seed(int(datetime.now().timestamp()))
     model = build_model(model_checkpoint)
+    #print(model.summary())
 
     model.optimizer.learning_rate.assign(learning_rate)
     print("learning rate: " + str(model.optimizer.learning_rate))
@@ -39,9 +39,10 @@ def train(model_checkpoint=None, batch_size=16, learning_rate = 0.0001, epochs=3
         train, _ = get_dataset()
         train = (train
                  # need to randomly fit clips less than 3s into a 3s window
-                 .map(lambda data, label: tf.py_function(random_window, inp=[data], Tout=[tf.float32]))
+                 #.map(lambda data, label: tf.py_function(random_window, inp=[data], Tout=[tf.float32]))
+                 .map(lambda data, label: tf.py_function(pad_window, inp=[data], Tout=[tf.float32]))
                  # convert to frequency domain
-                 .map(lambda data: stft_sound(data))
+                 .map(lambda data: tf.py_function(stft_sound, inp=[data], Tout=[tf.float32]))
                  # H x W x C format
                  .map(lambda data: tf.expand_dims(tf.squeeze(data), axis=-1))
                  )
@@ -56,9 +57,11 @@ def train(model_checkpoint=None, batch_size=16, learning_rate = 0.0001, epochs=3
     train = (train
              .repeat(3)
              # need to randomly fit clips less than 3s into a 3s window
-             .map(lambda data, label: (tf.py_function(random_window, inp=[data], Tout=[tf.float32]), label),
-                  num_parallel_calls = tf.data.AUTOTUNE)
-             .shuffle(buffer_size=100, reshuffle_each_iteration=True)
+             #.map(lambda data, label: (tf.py_function(random_window, inp=[data], Tout=[tf.float32]), label),
+             #     num_parallel_calls = tf.data.AUTOTUNE)
+             .map(lambda data, label: (tf.py_function(pad_window, inp=[data], Tout=[tf.float32]), label),
+                  num_parallel_calls=tf.data.AUTOTUNE)
+             .shuffle(buffer_size=50, reshuffle_each_iteration=True)
              # data augmentation
              .map(
                 lambda data, label: (tf.py_function(augment_train, inp=[data], Tout=[tf.float32]), label),
@@ -79,9 +82,11 @@ def train(model_checkpoint=None, batch_size=16, learning_rate = 0.0001, epochs=3
 
     # need to randomly space clips in the test set, we will repeat the test set a couple of times for this reason
     test = (test
-            .repeat(3)
+            #.repeat(3)
             # need to randomly fit clips less than 3s into a 3s window
-            .map(lambda data, label: (tf.py_function(random_window, inp=[data], Tout=[tf.float32]), label),
+            #.map(lambda data, label: (tf.py_function(random_window, inp=[data], Tout=[tf.float32]), label),
+            #     num_parallel_calls = tf.data.AUTOTUNE)
+            .map(lambda data, label: (tf.py_function(pad_window, inp=[data], Tout=[tf.float32]), label),
                  num_parallel_calls = tf.data.AUTOTUNE)
             # convert to frequency domain
             .map(lambda data, label: (tf.py_function(stft_sound,inp=[data],Tout=[tf.float32]), label),
@@ -94,7 +99,7 @@ def train(model_checkpoint=None, batch_size=16, learning_rate = 0.0001, epochs=3
             )
 
     # fitting (we are using the test data as validation here :) )
-    model.fit(train, validation_data=test, epochs=epochs, verbose=2, callbacks=[model_checkpoint_callback])
+    model.fit(train, validation_data = test ,epochs=epochs, verbose=2, callbacks=[model_checkpoint_callback])
 
 
 train()
