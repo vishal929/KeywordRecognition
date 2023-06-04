@@ -43,6 +43,7 @@ def train_model(model_checkpoint=None, batch_size=2, learning_rate = 0.0001, epo
                  # H x W x C format
                  .map(lambda data: tf.expand_dims(tf.squeeze(data), axis=-1))
                  )
+        print('actual input shape: ' + str(next(iter(train))))
         # adapting the normalization layer of the model to the dataset
         model.layers[1].adapt(train)
         #model.get_layer("normalization").adapt(list(iter(train)))
@@ -53,47 +54,45 @@ def train_model(model_checkpoint=None, batch_size=2, learning_rate = 0.0001, epo
     train, test = get_dataset()
 
     train = (train
-             .repeat(3)
+             #.repeat(3)
              # need to randomly fit clips less than 3s into a 3s window
              #.map(lambda data, label: (tf.py_function(random_window, inp=[data], Tout=[tf.float32]), label),
-             #     num_parallel_calls = tf.data.AUTOTUNE)
+             #     num_parallel_calls = 2)
              #.map(lambda data, label: (tf.py_function(pad_window, inp=[data], Tout=[tf.float32]), label),
-             #     num_parallel_calls=tf.data.AUTOTUNE)
-             .shuffle(buffer_size=50, reshuffle_each_iteration=True)
+             #     num_parallel_calls=2)
              # data augmentation
              .map(
                 lambda data, label: (tf.py_function(augment_train, inp=[data], Tout=[tf.float32]), label),
-                num_parallel_calls = tf.data.AUTOTUNE
+                num_parallel_calls = 2
              )
              # convert to frequency domain
              .map(lambda data, label: (tf.py_function(stft_sound,inp=[data], Tout=[tf.float32]), label),
-                  num_parallel_calls = tf.data.AUTOTUNE
+                  num_parallel_calls = 2
                   )
              # H x W x C format
              .map(lambda data, label: (tf.expand_dims(tf.squeeze(data), axis=-1), label),
-                  num_parallel_calls = tf.data.AUTOTUNE
+                  num_parallel_calls = 2
                   )
-             .batch(batch_size=batch_size, num_parallel_calls = tf.data.AUTOTUNE)
-             .prefetch(tf.data.AUTOTUNE)
+             .shuffle(buffer_size=50, reshuffle_each_iteration=True)
+             .batch(batch_size=batch_size, num_parallel_calls = 2)
              )
 
-
+    print('fit train shape: ' + str(next(iter(train))[0]))
     # need to randomly space clips in the test set, we will repeat the test set a couple of times for this reason
     test = (test
             #.repeat(3)
             # need to randomly fit clips less than 3s into a 3s window
             #.map(lambda data, label: (tf.py_function(random_window, inp=[data], Tout=[tf.float32]), label),
-            #     num_parallel_calls = tf.data.AUTOTUNE)
+            #     num_parallel_calls = 2)
             #.map(lambda data, label: (tf.py_function(pad_window, inp=[data], Tout=[tf.float32]), label),
-            #     num_parallel_calls = tf.data.AUTOTUNE)
+            #     num_parallel_calls = 2)
             # convert to frequency domain
             .map(lambda data, label: (tf.py_function(stft_sound,inp=[data],Tout=[tf.float32]), label),
-                 num_parallel_calls = tf.data.AUTOTUNE)
+                 num_parallel_calls = 2)
             # H x W x C format
             .map(lambda data, label: (tf.expand_dims(tf.squeeze(data), axis=-1), label),
-                 num_parallel_calls = tf.data.AUTOTUNE)
-            .batch(batch_size=batch_size,num_parallel_calls=tf.data.AUTOTUNE)
-            .prefetch(tf.data.AUTOTUNE)
+                 num_parallel_calls = 2)
+            .batch(batch_size=batch_size,num_parallel_calls=2)
             )
 
     # fitting (we are using the test data as validation here :) )
