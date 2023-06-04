@@ -45,13 +45,13 @@ def build_model(checkPointPath=None):
     # normalization layer (we need to call adapt on this before training and saving!)
     x = keras.layers.Normalization(axis=-1)(input) # axis=-1 means we normalize along the channel dimension
     # number of convolutional blocks
-    num_blocks = 4
+    num_blocks = 10
     for i in range(num_blocks):
         if i == num_blocks-1:
-            x = conv_block(x,num_filters=32 * (i + 1), kernel_size=(3, 3), conv_stride=(1, 1), pool_size=(1, 4),
+            x = conv_block(x,num_filters=32 * (i + 1), kernel_size=(3, 3), conv_stride=(1, 1), pool_size=(1, 2),
                            dropout_rate=0.5)
         else:
-            x = conv_block(x,num_filters=32 * (i + 1), kernel_size=(3, 3), conv_stride=(1, 1), pool_size=(1, 4))
+            x = conv_block(x,num_filters=32 * (i + 1), kernel_size=(3, 3), conv_stride=(1, 1), pool_size=(1, 2))
 
     # flatten before dense
     x = keras.layers.Flatten()(x)
