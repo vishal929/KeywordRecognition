@@ -14,13 +14,13 @@ CHECKPOINT_DIR = os.path.join(ROOT_DIR,"Models","Saved_Checkpoints","Current_Che
 def train_model(model_checkpoint=None, batch_size=2, learning_rate = 0.0001, epochs=300):
     # forcing cpu (for some reason my laptop gpu is failing)
     # Hide GPU from visible devices
-    #tf.config.set_visible_devices([], 'GPU')
+    tf.config.set_visible_devices([], 'GPU')
     print(tf.config.list_physical_devices('GPU'))
 
     # seeding the random number generator
     tf.random.set_seed(int(datetime.now().timestamp()))
     model = build_model(model_checkpoint)
-    #print(model.summary())
+    print(model.summary())
 
     model.optimizer.learning_rate.assign(learning_rate)
     print("learning rate: " + str(model.optimizer.learning_rate))
@@ -60,6 +60,7 @@ def train_model(model_checkpoint=None, batch_size=2, learning_rate = 0.0001, epo
              #     num_parallel_calls = 2)
              #.map(lambda data, label: (tf.py_function(pad_window, inp=[data], Tout=[tf.float32]), label),
              #     num_parallel_calls=2)
+             .shuffle(buffer_size=50, reshuffle_each_iteration=True)
              # data augmentation
              .map(
                 lambda data, label: (tf.py_function(augment_train, inp=[data], Tout=[tf.float32]), label),
@@ -73,11 +74,10 @@ def train_model(model_checkpoint=None, batch_size=2, learning_rate = 0.0001, epo
              .map(lambda data, label: (tf.expand_dims(tf.squeeze(data), axis=-1), label),
                   num_parallel_calls = 2
                   )
-             .shuffle(buffer_size=50, reshuffle_each_iteration=True)
              .batch(batch_size=batch_size, num_parallel_calls = 2)
              )
 
-    print('fit train shape: ' + str(next(iter(train))[0]))
+    print('fit train shape: ' + str(next(iter(train))))
     # need to randomly space clips in the test set, we will repeat the test set a couple of times for this reason
     test = (test
             #.repeat(3)
