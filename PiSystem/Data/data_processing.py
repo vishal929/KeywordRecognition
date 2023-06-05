@@ -81,15 +81,17 @@ def prepare_dataset(dataset,set_random_window=False,augment=False,shuffle=False)
 
 # logic for converting to the frequency domain
 def stft_sound(data):
-    # print("stft input: " + str(data.shape))
-    stft = tf.signal.stft(data, frame_length=SAMPLING_RATE,
-                          frame_step=int(SAMPLING_RATE / 2),
-                          fft_length=SAMPLING_RATE,
-                          pad_end=False)
-    #print('after stft shape: ' + str(stft.shape))
-    mag = tf.squeeze(tf.abs(stft))
-    #print('after abs shape: ' + str(mag.shape))
-    return mag
+    # I want to use the cpu for stft (for some reason I get oom with gpu)
+    with tf.device('/cpu:0'):
+        # print("stft input: " + str(data.shape))
+        stft = tf.signal.stft(data, frame_length=SAMPLING_RATE,
+                              frame_step=int(SAMPLING_RATE / 2),
+                              fft_length=SAMPLING_RATE,
+                              pad_end=False)
+        #print('after stft shape: ' + str(stft.shape))
+        mag = tf.squeeze(tf.abs(stft))
+        #print('after abs shape: ' + str(mag.shape))
+        return mag
 
 
 # logic for mapping filename (absolute) to class label
@@ -103,31 +105,33 @@ def map_name_to_label_and_data(filename):
 
 # just padding the end of a sample to fit 3 seconds in a window
 def pad_window(example):
-    # print("pad window: " + str(example.shape))
-    if (example.shape[0] < 3 * SAMPLING_RATE):
-        # need to pad end of the sound clip to the desired length
-        paddings = tf.constant([[0, 3 * SAMPLING_RATE - example.shape[0]]])
-        # paddings[1] = 3* SAMPLING_RATE - example.shape[0]
-        return tf.pad(tf.squeeze(example), paddings)
-    else:
-        return tf.squeeze(example[:3 * SAMPLING_RATE])
+    with tf.device('/cpu:0'):
+        # print("pad window: " + str(example.shape))
+        if (example.shape[0] < 3 * SAMPLING_RATE):
+            # need to pad end of the sound clip to the desired length
+            paddings = tf.constant([[0, 3 * SAMPLING_RATE - example.shape[0]]])
+            # paddings[1] = 3* SAMPLING_RATE - example.shape[0]
+            return tf.pad(tf.squeeze(example), paddings)
+        else:
+            return tf.squeeze(example[:3 * SAMPLING_RATE])
 
 
 # need to fit samples which are less than 3 seconds long into a window of 3 seconds
 def random_window(example):
-    # if the audio clip is less than 3 seconds (which most are), we can randomly place this in a window of 3 seconds
-    if (example.shape[0] < 3 * SAMPLING_RATE):
-        window = np.zeros(shape=(3 * SAMPLING_RATE), dtype=np.float32)
+    with tf.device('/cpu:0'):
+        # if the audio clip is less than 3 seconds (which most are), we can randomly place this in a window of 3 seconds
+        if (example.shape[0] < 3 * SAMPLING_RATE):
+            window = np.zeros(shape=(3 * SAMPLING_RATE), dtype=np.float32)
 
-        # choose a random start index from 0 to len(window)-len(train_example)
-        rand_index = tf.random.uniform(shape=[1], minval=0, maxval=3 * SAMPLING_RATE - example.shape[0],
-                                       dtype=tf.int32).numpy()[0]
-        window[rand_index:rand_index + example.shape[0]] = example.numpy()
-        augmented = tf.convert_to_tensor(window, dtype=tf.float32)
+            # choose a random start index from 0 to len(window)-len(train_example)
+            rand_index = tf.random.uniform(shape=[1], minval=0, maxval=3 * SAMPLING_RATE - example.shape[0],
+                                           dtype=tf.int32).numpy()[0]
+            window[rand_index:rand_index + example.shape[0]] = example.numpy()
+            augmented = tf.convert_to_tensor(window, dtype=tf.float32)
 
-        return augmented
-    else:
-        return example
+            return augmented
+        else:
+            return example
 
 
 '''

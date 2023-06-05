@@ -1,6 +1,6 @@
 import os
 
-SAMPLING_RATE = 48000 # sampling rate we choose
+SAMPLING_RATE = 32000 # sampling rate we choose
 SAMPLE_WIDTH = 2 # number of bytes per sample
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__)) # Root Directory
 
