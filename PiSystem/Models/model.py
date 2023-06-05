@@ -26,7 +26,8 @@ def conv_block(input, num_filters, kernel_size, conv_stride, pool_size, dropout_
     x = tf.keras.layers.LeakyReLU()(x)
 
     # pooling across feature dimension
-    x = tf.keras.layers.MaxPool2D(pool_size=pool_size, padding=padding,strides=pool_stride)(x)
+    if pool_size is not None:
+        x = tf.keras.layers.MaxPool2D(pool_size=pool_size, padding=padding,strides=pool_stride)(x)
     #print("after pool shape: " + str(x.shape))
 
     # dropout at low rate
@@ -36,7 +37,7 @@ def conv_block(input, num_filters, kernel_size, conv_stride, pool_size, dropout_
 
 
 # using functional API to build our model
-# we are using a convolutional model, which should be channels first (for maximum support across platforms)
+# we are using a convolutional model, which should be channels last (for maximum support across platforms)
 # if we have a checkpoint, we load from the checkpoint, otherwise we build from scratch
 def build_model(checkPointPath=None):
     # only need a small architecture for keywords
@@ -46,13 +47,11 @@ def build_model(checkPointPath=None):
     # normalization layer (we need to call adapt on this before training and saving!)
     x = tf.keras.layers.Normalization(axis=-1)(input) # axis=-1 means we normalize along the channel dimension
     # number of convolutional blocks
-    num_blocks = 6
+    num_blocks = 2
     for i in range(num_blocks):
-        if i == num_blocks-1:
-            x = conv_block(x,num_filters=32 * (i + 1), kernel_size=(3, 3), conv_stride=(1, 1), pool_size=(1, 2),
-                           dropout_rate=0.2)
-        else:
-            x = conv_block(x,num_filters=32 * (i + 1), kernel_size=(3, 3), conv_stride=(1, 1), pool_size=(1, 2))
+        x = conv_block(x,num_filters=16 * ( 2**(i + 1)), kernel_size=(3, 3), conv_stride=(1, 1), pool_size=None)
+        x = conv_block(x, num_filters=16 * (2 ** (i + 1)), kernel_size=(3, 3), conv_stride=(1, 1), pool_size=None)
+        x = conv_block(x,num_filters=16 * (2 ** (i + 1)), kernel_size=(3, 3), conv_stride=(1, 1), pool_size=(1, 4))
 
     # flatten before dense
     x = tf.keras.layers.Flatten()(x)
@@ -76,15 +75,3 @@ def build_model(checkPointPath=None):
 
     return model
 
-'''
-# testing the model with input
-model = build_model()
-test_input = tf.ones(shape=(2, 5, 24001, 1))
-out = model.predict(test_input)
-print(out.shape)
-# resnet 18 can do 3 fps on the raspberry pi (this is actually more than we need, but I want to make my own arch)
-# we want a single computation every second, which means we just need a model that can do 1fps)
-# however I also want the raspberry pi to have enough compute left in the time window to send messages to the microcontroller
-# anything below resnet 18 parameters (~11M) is fair game
-print(model.summary())
-'''

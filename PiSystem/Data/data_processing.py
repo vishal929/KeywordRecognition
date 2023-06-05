@@ -2,7 +2,6 @@
 import os
 import tensorflow as tf
 from pydub import AudioSegment
-from pydub.playback import play
 import numpy as np
 from PiSystem.constants import SAMPLING_RATE, SAMPLE_WIDTH, ROOT_DIR, LEARN_MAP, INV_MAP
 from pathlib import Path
@@ -19,16 +18,16 @@ def load_audio_file(filename):
     data.set_sample_width(SAMPLE_WIDTH)
     # returning a numpy array (we have 16 bits but we will use float32 for extra room for augmentation)
     out = np.array(data.get_array_of_samples(), dtype=np.float32)
-    # clipping the audio to 3s if larger, padding if smaller
+    # clipping the audio to 3s if larger, will do padding after
     if out.shape[0] > 3 * SAMPLING_RATE:
         out = out[:3 * SAMPLING_RATE]
-    else:
-        out = np.pad(out, pad_width=(0, 3 * SAMPLING_RATE - out.shape[0]))
-    # print("audio out shape: " + str(out.shape))
-    return out
+
+    return tf.convert_to_tensor(out,dtype=tf.float32)
 
 
 # pipeline to load train and test data (we are not using a validation set since our problem is small in scope)
+# if augment is true, we randomly place the audio segment for the training set into a 3s window
+# if augment is false, we pad the end of the segment until the window is 3s long
 def get_dataset():
     # firstly getting filenames for train and test data
     train_files = os.path.join(ROOT_DIR, "Data", "Dataset", "Train", "**", "*.m4a")
@@ -41,27 +40,44 @@ def get_dataset():
     # mapping filenames to their class and transforming filenames to data
     train = train.map(lambda filename: tf.py_function(map_name_to_label_and_data,
                                                       inp=[filename], Tout=[tf.float32, tf.int32]),
-                      num_parallel_calls=2)
+                      num_parallel_calls=tf.data.AUTOTUNE)
     test = test.map(lambda filename: tf.py_function(map_name_to_label_and_data,
                                                     inp=[filename], Tout=[tf.float32, tf.int32]),
-                    num_parallel_calls=2)
+                    num_parallel_calls=tf.data.AUTOTUNE)
 
-    # clip audio to 3 seconds from the beginning (more than enough time to say classnames)
-    '''
-    train = train.map(lambda data,label: (tf.squeeze(data[:SAMPLING_RATE*3]),label)
-                      , num_parallel_calls=2)
-    test = test.map(lambda data, label: (tf.squeeze(data[:SAMPLING_RATE * 3]), label),
-                    num_parallel_calls=2)
-    '''
-
-    # padding clips less than 3 seconds to 3 seconds
-    # train = train.map(lambda data, label: (tf.py_function(pad_window, inp=[data], Tout=[tf.float32]), label),
-    #     num_parallel_calls=2)
-    # test = test.map(lambda data, label: (tf.py_function(pad_window, inp=[data], Tout=[tf.float32]), label),
-    #                  num_parallel_calls=2)
-
+    # audio segments at this point are clipped to 3s, not padded!
     return train, test
 
+# prepare a tf.dataset for training and testing (we should call batch() on the output of this)
+def prepare_dataset(dataset,set_random_window=False,augment=False,shuffle=False):
+    if shuffle:
+        dataset = dataset.shuffle(buffer_size=300, reshuffle_each_iteration=True)
+    if augment:
+        # need to repeat samples if we are doing augmentation
+        dataset = dataset.repeat(3)
+    if set_random_window:
+        # need to apply the random windowing augmentation
+        dataset = dataset.map(lambda example,label: (tf.py_function(random_window,inp=[example],Tout=[tf.float32]),label),
+                          num_parallel_calls = tf.data.AUTOTUNE)
+    else:
+        # we just pad the end with zeros
+        dataset = dataset.map(lambda example,label: (tf.py_function(pad_window,inp=[example],Tout=[tf.float32]),label),
+                          num_parallel_calls = tf.data.AUTOTUNE)
+
+    # data augmentation after padding
+    if augment:
+       dataset = dataset.map(
+                lambda data, label: (augment_train(data), label),
+                num_parallel_calls = tf.data.AUTOTUNE
+             )
+    # convert to frequency domain
+    dataset = dataset.map(lambda data, label: (stft_sound(data), label),
+                  num_parallel_calls = tf.data.AUTOTUNE
+            )
+    # H x W x C format
+    dataset = dataset.map(lambda data, label: (tf.expand_dims(tf.squeeze(data), axis=-1), label),
+                    num_parallel_calls=tf.data.AUTOTUNE)
+    return dataset
 
 # logic for converting to the frequency domain
 def stft_sound(data):
@@ -70,9 +86,9 @@ def stft_sound(data):
                           frame_step=int(SAMPLING_RATE / 2),
                           fft_length=SAMPLING_RATE,
                           pad_end=False)
-    # print('after stft shape: ' + str(stft.shape))
-    mag = tf.abs(stft)
-    # print('after abs shape: ' + str(mag.shape))
+    #print('after stft shape: ' + str(stft.shape))
+    mag = tf.squeeze(tf.abs(stft))
+    #print('after abs shape: ' + str(mag.shape))
     return mag
 
 
@@ -86,9 +102,7 @@ def map_name_to_label_and_data(filename):
 
 
 # just padding the end of a sample to fit 3 seconds in a window
-# we also clip the sample to 3 secconds if it is larger here
 def pad_window(example):
-    # for some odd reason a dim of 1 is appended to the shape :(
     # print("pad window: " + str(example.shape))
     if (example.shape[0] < 3 * SAMPLING_RATE):
         # need to pad end of the sound clip to the desired length
@@ -117,7 +131,11 @@ def random_window(example):
         return example
 
 
-# augmentation to training data to result in a more robust model
+'''
+    data augmentation on train data to result in a more robust model
+    1) random scaling to adjust gain
+    2) random additive noise based on sum squared of given samples
+'''
 def augment_train(train_example):
     # print('augment train example shape: ' + str(train_example))
     # random scaling for volume (from experimental playback I choose a scale from 0.5 to 3)
@@ -125,53 +143,13 @@ def augment_train(train_example):
     augmented = tf.multiply(train_example, scale)
 
     # random noise addition (additive white noise model)
+    num_elements = 3 * SAMPLING_RATE
     sumsquare = tf.reduce_sum(tf.pow(train_example, 2.0))
-    err = sumsquare / train_example.shape[0]
-    stderr = np.sqrt(err)
+    err = sumsquare / num_elements
+    stderr = tf.sqrt(err)
 
     # adding in the random noise
-    noise = tf.random.normal(mean=0.0, stddev=stderr, shape=augmented.shape)
+    noise = tf.random.normal(mean=0.0, stddev=stderr, shape=[num_elements])
     augmented = tf.add(augmented, noise)
     return augmented
 
-
-'''
-    # need to fit clips which are less than 3 seconds long to a window of 3 seconds
-    train = train.map(lambda data,label: (tf.py_function(random_window, inp=[data], Tout=[tf.float32]), label))
-    test = test.map(lambda data, label: (tf.py_function(random_window, inp=[data], Tout=[tf.float32]), label))
-
-    # training augmentation on audio clips for the training set
-    train = train.map(lambda data, label: (tf.py_function(augment_train,inp=[data,augmentation],Tout=[tf.float32]), label))
-
-    # from experimenting with scaling, scaling the raw sound has an exponential affect on volume
-    # I find that a random scale of 0.5 to 3 would be suitable (from quiet but still audible to loud, but not too loud)
-    test_sound = AudioSegment(
-        data = (next(iter(train))[0].numpy()[-1,:]).astype(np.int16),
-        sample_width= SAMPLE_WIDTH,
-        frame_rate=SAMPLING_RATE,
-        channels=1
-    )
-    play(test_sound)
-
-    # applying short time fourier transform to convert to frequency domain
-    train = train.map(lambda data,label: (tf.abs(
-                                            tf.signal.stft(data,frame_length=SAMPLING_RATE,
-                                                           frame_step=int(SAMPLING_RATE/2),
-                                                           fft_length=SAMPLING_RATE,
-                                                           pad_end=False)
-                                            ),label))
-    test = test.map(lambda data, label: (tf.abs(
-        tf.signal.stft(data, frame_length=SAMPLING_RATE,
-                       frame_step=int(SAMPLING_RATE / 2),
-                       fft_length=SAMPLING_RATE,
-                       pad_end=False)
-    ), label))
-
-    # we end up with data = (1, 5 , 24001), label samples
-    # unsqueeze on last dim so we have (H,W,C) structure which provides maximum compatibility with CPUs in Tensorflow
-    train =train.map(lambda data, label: (tf.expand_dims(tf.squeeze(data),axis=-1),label))
-    test = test.map(lambda data, label: (tf.expand_dims(tf.squeeze(data),axis=-1), label))
-
-
-    return train, test
-'''

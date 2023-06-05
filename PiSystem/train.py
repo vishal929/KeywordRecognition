@@ -4,17 +4,22 @@
 
 import tensorflow as tf
 from Models.model import build_model
-from Data.data_processing import get_dataset, augment_train, stft_sound, random_window, pad_window
+from Data.data_processing import get_dataset, prepare_dataset
 from datetime import datetime
 import os
 from constants import ROOT_DIR
 
 CHECKPOINT_DIR = os.path.join(ROOT_DIR,"Models","Saved_Checkpoints","Current_Checkpoint")
 
-def train_model(model_checkpoint=None, batch_size=16, learning_rate = 0.0001, epochs=300):
-    # need to not use my gpu with data pipeline since it is bugged for signal.stft operation
-    # Hide GPU from visible devices
-    tf.config.set_visible_devices([], 'GPU')
+'''
+gpus = tf.config.list_physical_devices('GPU')
+for gpu in gpus:
+    tf.config.experimental.set_memory_growth(gpu, True)
+
+tf.compat.v1.enable_eager_execution()
+'''
+
+def train_model(model_checkpoint=None, batch_size=8, learning_rate = 0.0001, epochs=300):
     print(tf.config.list_physical_devices('GPU'))
 
     # seeding the random number generator
@@ -37,13 +42,10 @@ def train_model(model_checkpoint=None, batch_size=16, learning_rate = 0.0001, ep
     if model_checkpoint is None:
         # getting train data with no augmentation
         train, _ = get_dataset()
-        train = (train
-                 # convert to frequency domain
-                 .map(lambda data,label: tf.py_function(stft_sound, inp=[data], Tout=[tf.float32]))
-                 # H x W x C format
-                 .map(lambda data: tf.expand_dims(tf.squeeze(data), axis=-1))
-                 )
-        print('actual input shape: ' + str(next(iter(train))))
+        train = prepare_dataset(train)
+        # removing labels (dont need them for normalization)
+        train = train.map(lambda example,label: example)
+        #print('actual input shape: ' + str(next(iter(train))))
         # adapting the normalization layer of the model to the dataset
         model.layers[1].adapt(train)
         #model.get_layer("normalization").adapt(list(iter(train)))
@@ -53,47 +55,12 @@ def train_model(model_checkpoint=None, batch_size=16, learning_rate = 0.0001, ep
     # grabbing our dataset
     train, test = get_dataset()
 
-    train = (train
-             #.repeat(3)
-             # need to randomly fit clips less than 3s into a 3s window
-             #.map(lambda data, label: (tf.py_function(random_window, inp=[data], Tout=[tf.float32]), label),
-             #     num_parallel_calls = 2)
-             #.map(lambda data, label: (tf.py_function(pad_window, inp=[data], Tout=[tf.float32]), label),
-             #     num_parallel_calls=2)
-             .shuffle(buffer_size=50, reshuffle_each_iteration=True)
-             # data augmentation
-             .map(
-                lambda data, label: (tf.py_function(augment_train, inp=[data], Tout=[tf.float32]), label),
-                num_parallel_calls = 2
-             )
-             # convert to frequency domain
-             .map(lambda data, label: (tf.py_function(stft_sound,inp=[data], Tout=[tf.float32]), label),
-                  num_parallel_calls = 2
-                  )
-             # H x W x C format
-             .map(lambda data, label: (tf.expand_dims(tf.squeeze(data), axis=-1), label),
-                  num_parallel_calls = 2
-                  )
-             .batch(batch_size=batch_size, num_parallel_calls = 2)
-             )
+    train = prepare_dataset(train,set_random_window=True,augment=True,shuffle=True).batch(batch_size=batch_size,
+                                                                                num_parallel_calls=tf.data.AUTOTUNE)
 
-    print('fit train shape: ' + str(next(iter(train))))
+    #print('fit train shape: ' + str(next(iter(train))))
     # need to randomly space clips in the test set, we will repeat the test set a couple of times for this reason
-    test = (test
-            #.repeat(3)
-            # need to randomly fit clips less than 3s into a 3s window
-            #.map(lambda data, label: (tf.py_function(random_window, inp=[data], Tout=[tf.float32]), label),
-            #     num_parallel_calls = 2)
-            #.map(lambda data, label: (tf.py_function(pad_window, inp=[data], Tout=[tf.float32]), label),
-            #     num_parallel_calls = 2)
-            # convert to frequency domain
-            .map(lambda data, label: (tf.py_function(stft_sound,inp=[data],Tout=[tf.float32]), label),
-                 num_parallel_calls = 2)
-            # H x W x C format
-            .map(lambda data, label: (tf.expand_dims(tf.squeeze(data), axis=-1), label),
-                 num_parallel_calls = 2)
-            .batch(batch_size=batch_size,num_parallel_calls=2)
-            )
+    test = prepare_dataset(test).batch(batch_size=batch_size,num_parallel_calls = tf.data.AUTOTUNE)
 
     # fitting (we are using the test data as validation here :) )
     model.fit(train, validation_data = test ,epochs=epochs, verbose=2, callbacks=[model_checkpoint_callback])
