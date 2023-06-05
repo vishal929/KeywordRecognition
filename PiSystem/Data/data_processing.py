@@ -115,7 +115,6 @@ def pad_window(example):
 
 # need to fit samples which are less than 3 seconds long into a window of 3 seconds
 def random_window(example):
-    # print("random window example shape: " + str(example.shape))
     # if the audio clip is less than 3 seconds (which most are), we can randomly place this in a window of 3 seconds
     if (example.shape[0] < 3 * SAMPLING_RATE):
         window = np.zeros(shape=(3 * SAMPLING_RATE), dtype=np.float32)

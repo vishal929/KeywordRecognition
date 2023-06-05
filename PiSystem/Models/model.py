@@ -43,11 +43,11 @@ def build_model(checkPointPath=None):
     # only need a small architecture for keywords
     # the architecture is inspired by resnet but we are using much fewer conv blocks
     # B x H x W x C
-    input = tf.keras.Input(shape=(5, 8001, 1))
+    input = tf.keras.Input(shape=(5, 24001, 1))
     # normalization layer (we need to call adapt on this before training and saving!)
     x = tf.keras.layers.Normalization(axis=-1)(input) # axis=-1 means we normalize along the channel dimension
     # number of convolutional blocks
-    num_blocks = 2
+    num_blocks = 3
     for i in range(num_blocks):
         x = conv_block(x,num_filters=16 * ( 2**(i + 1)), kernel_size=(3, 3), conv_stride=(1, 1), pool_size=None)
         x = conv_block(x, num_filters=16 * (2 ** (i + 1)), kernel_size=(3, 3), conv_stride=(1, 1), pool_size=None)
