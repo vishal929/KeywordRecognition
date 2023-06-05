@@ -147,7 +147,7 @@ def augment_train(train_example):
 
     # random noise addition (additive white noise model)
     num_elements = 3 * SAMPLING_RATE
-    sumsquare = tf.reduce_sum(tf.pow(train_example, 2.0))
+    sumsquare = tf.reduce_sum(tf.pow(augmented, 2.0))
     err = sumsquare / num_elements
     stderr = tf.sqrt(err)
 

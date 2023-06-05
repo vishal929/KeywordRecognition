@@ -1,6 +1,6 @@
 import os
 
-SAMPLING_RATE = 32000 # sampling rate we choose
+SAMPLING_RATE = 48000 # sampling rate we choose (48000 is the sampling rate of the microphone we are using)
 SAMPLE_WIDTH = 2 # number of bytes per sample
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__)) # Root Directory
 
