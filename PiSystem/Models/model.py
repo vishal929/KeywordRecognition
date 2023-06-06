@@ -54,7 +54,7 @@ def build_model(checkPointPath=None):
     for i in range(num_blocks):
         #x = conv_block(x,num_filters=16 * ( 2**(i + 1)), kernel_size=(3, 3), conv_stride=(1, 1), pool_size=None)
         #x = conv_block(x, num_filters=16 * (2 ** (i + 1)), kernel_size=(3, 3), conv_stride=(1, 1), pool_size=None)
-        x = conv_block(x,num_filters=16 * (2 ** (i + 1)), kernel_size=(3, 3), conv_stride=(1, 1), pool_size=(2, 4))
+        x = conv_block(x,num_filters=16 * (2 ** (i + 1)), kernel_size=(3, 3), conv_stride=(1, 1), pool_size=(2, 5))
 
     # flatten before dense
     x = tf.keras.layers.Flatten()(x)
