@@ -34,7 +34,7 @@ if __name__ == '__main__':
     # set constants needed during the inference loop
     arduino_flag = False
     arduino_win_count = 0
-    prob_threshold = 0.8
+    prob_threshold = 0.9
 
     # setup buffer for holding 3s of audio data
     recording_samples = [np.zeros(SAMPLING_RATE),np.zeros(SAMPLING_RATE),np.zeros(SAMPLING_RATE)]
@@ -103,13 +103,13 @@ if __name__ == '__main__':
             if (not arduino_flag) and detected_class == 'arduino':
                 # we have triggered the arduino flag, now we have to detect keywords and then send messages
                 # this detection window lasts for 5s or until a valid class is detected
-                print('arduino window initiated')
+                print('arduino window initiated with probability: ' + str(prob))
                 arduino_flag = True
                 continue
             elif arduino_flag and detected_class != 'arduino' and detected_class != 'silence':
                 # we are in the detection window, and we have detected a keyword that is not silence
                 # lets send a message to the corresponding microcontroller and reset the detection flag
-                print('sending a message to class: ' + str(detected_class))
+                print('sending a message to class: ' + str(detected_class) + ' with probability: ' + str(prob))
                 send_message(detected_class)
                 arduino_flag = False
                 print('arduino window stopped')

@@ -28,7 +28,7 @@ class MemoryPrintingCallback(tf.keras.callbacks.Callback):
             float(gpu_dict['peak']) / (1024 ** 3)))
 
 
-def train_model(model_checkpoint=None, batch_size=16, learning_rate=0.0001, epochs=300):
+def train_model(model_checkpoint=None, batch_size=4, learning_rate=0.0001, epochs=300):
     print(tf.config.list_physical_devices('GPU'))
 
     # seeding the random number generator

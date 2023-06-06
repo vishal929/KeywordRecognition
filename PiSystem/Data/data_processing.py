@@ -84,13 +84,11 @@ def stft_sound(data):
     # I want to use the cpu for stft (for some reason I get oom with gpu)
     with tf.device('/cpu:0'):
         # print("stft input: " + str(data.shape))
-        stft = tf.signal.stft(data, frame_length=SAMPLING_RATE,
-                              frame_step=int(SAMPLING_RATE / 2),
-                              fft_length=SAMPLING_RATE,
+        stft = tf.signal.stft(data, frame_length=1024,
+                              frame_step=256,
                               pad_end=False)
         #print('after stft shape: ' + str(stft.shape))
         mag = tf.squeeze(tf.abs(stft))
-        #print('after abs shape: ' + str(mag.shape))
         return mag
 
 
