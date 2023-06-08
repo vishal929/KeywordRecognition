@@ -5,6 +5,7 @@ from pydub import AudioSegment
 import numpy as np
 from PiSystem.constants import SAMPLING_RATE, SAMPLE_WIDTH, ROOT_DIR, LEARN_MAP, INV_MAP
 from pathlib import Path
+import glob
 
 
 # function to return a numpy array of samples from a m4a recording file
@@ -29,13 +30,14 @@ def load_audio_file(filename):
 # if augment is true, we randomly place the audio segment for the training set into a 3s window
 # if augment is false, we pad the end of the segment until the window is 3s long
 def get_dataset():
-    # firstly getting filenames for train and test data
-    train_files = os.path.join(ROOT_DIR, "Data", "Dataset", "Train", "**", "*.m4a")
-    test_files = os.path.join(ROOT_DIR, "Data", "Dataset", "Test", "**", "*.m4a")
+    # firstly getting filenames for train and test data (we are matching filenames that start with m or w
+    # m for mp3 and w for wav
+    train_files = glob.glob(os.path.join(ROOT_DIR, "Data", "Dataset", "Train", "**", "*.[mw]*"),recursive=True)
+    test_files = glob.glob(os.path.join(ROOT_DIR, "Data", "Dataset", "Test", "**", "*.[mw]*"),recursive=True)
 
     # getting a dataset of filenames to start
-    train = tf.data.Dataset.list_files(train_files)
-    test = tf.data.Dataset.list_files(test_files)
+    train = tf.data.Dataset.from_tensor_slices(train_files)
+    test = tf.data.Dataset.from_tensor_slices(test_files)
 
     # mapping filenames to their class and transforming filenames to data
     train = train.map(lambda filename: tf.py_function(map_name_to_label_and_data,
@@ -145,7 +147,7 @@ def augment_train(train_example):
 
     # random noise addition (additive white noise model)
     num_elements = 3 * SAMPLING_RATE
-    sumsquare = tf.reduce_sum(tf.pow(augmented, 2.0))
+    sumsquare = tf.reduce_sum(tf.pow(train_example, 2.0))
     err = sumsquare / num_elements
     stderr = tf.sqrt(err)
 

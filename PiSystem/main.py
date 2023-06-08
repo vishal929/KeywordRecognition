@@ -34,7 +34,7 @@ if __name__ == '__main__':
     # set constants needed during the inference loop
     arduino_flag = False
     arduino_win_count = 0
-    prob_threshold = 0.9
+    prob_threshold = 0.95
 
     # setup buffer for holding 3s of audio data
     recording_samples = [np.zeros(SAMPLING_RATE),np.zeros(SAMPLING_RATE),np.zeros(SAMPLING_RATE)]
@@ -62,9 +62,8 @@ if __name__ == '__main__':
         tf_in = tf.abs(
             tf.signal.stft(
                 tf.convert_to_tensor(tf_in,dtype=tf.float32),
-                frame_length = SAMPLING_RATE,
-                frame_step = int(SAMPLING_RATE/2),
-                fft_length = SAMPLING_RATE,
+                frame_length = 1024,
+                frame_step = 256,
                 pad_end=False
             )
         )
@@ -112,6 +111,7 @@ if __name__ == '__main__':
                 print('sending a message to class: ' + str(detected_class) + ' with probability: ' + str(prob))
                 send_message(detected_class)
                 arduino_flag = False
+                arduino_win_count=0
                 print('arduino window stopped')
                 continue
 
@@ -121,6 +121,7 @@ if __name__ == '__main__':
             if arduino_win_count == 5:
                 # want to stop the window after 5 seconds has passed without a valid command
                 arduino_flag = False
+                arduino_win_count = 0
                 print('arduino window stopped')
 
 
