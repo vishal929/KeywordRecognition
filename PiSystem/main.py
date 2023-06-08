@@ -62,7 +62,8 @@ if __name__ == '__main__':
                 # if the queue is full, just dump it
                 if recording_queue.full():
                     with recording_queue.mutex:
-                        recording_queue.queue.clear()
+                        # just replace the entire queue
+                        recording_queue = queue.Queue(maxsize=12)
             except queue.Empty as e:
                 # queue has no new elements we continue
                 continue
