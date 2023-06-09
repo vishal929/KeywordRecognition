@@ -15,6 +15,8 @@ import tensorflow as tf
 import numpy as np
 import sounddevice as sd
 
+import serial
+
 # function which sends a message to the specific microcontroller for this class to flip the switch
 def send_message(classname):
     pass
