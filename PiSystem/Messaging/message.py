@@ -25,7 +25,7 @@ def connect_to_devices(radio,device_addrs,timeout=10):
     ble_connections = []
     for addr,name in device_addrs:
         ble_connections.append(
-            (radio.connect(addr,timeout=timeout),name)
+            (radio.connect(addr,timeout=timeout).pair(),name)
         )
     return ble_connections
 
@@ -36,10 +36,10 @@ def send_message(ble_connections, class_trigger):
     class_name = INV_MAP[class_trigger]
     for conn, name in ble_connections:
         if class_name in name.lower():
-            conn[UARTService].write(class_trigger.to_bytes(length=1,byteorder='big'))
+            conn[UARTService].write(str(class_trigger).encode('ascii'))
             return
 
 
 radio,desired = discover_devices(timeout=5)
 ble_connections = connect_to_devices(radio,desired)
-send_message(ble_connections,1)
+send_message(ble_connections,4)
