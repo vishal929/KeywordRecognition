@@ -2,7 +2,7 @@
 from time import sleep
 
 from adafruit_ble import BLERadio
-from PiSystem.constants import INV_MAP
+from PiSystem.constants import LEARN_MAP
 from adafruit_ble.services.nordic import UARTService
 
 
@@ -63,7 +63,7 @@ class BLEConnectionManager:
         :param class_trigger: an integer representing the class to trigger ( this is the message to send)
     """
     def send_message(self, class_trigger):
-        class_name = INV_MAP[class_trigger]
+        class_name = LEARN_MAP[class_trigger]
         for idx, (conn, addr, name) in enumerate(self.ble_connections):
             # check if we are connected
             if class_name in name.lower():
