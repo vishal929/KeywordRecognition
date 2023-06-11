@@ -15,7 +15,7 @@ class BLEConnectionManager:
     def __init__(self, timeout=10):
         # we should have a radio to manage connections
         self.radio = BLERadio()
-        # we should have named connections of the form (connection_object, device_name)
+        # we should have named connections of the form (connection_object, device_addr, device_name)
         self.ble_connections = []
         # we should set a timeout of seconds until the connection is considered failed
         self.timeout = timeout
@@ -46,7 +46,7 @@ class BLEConnectionManager:
     # we will timeout after 10 seconds if no connection
     """
         Using BLE to actually establish connections to a list of device addresses
-        self.ble_connections is updated with the established connections and device names
+        self.ble_connections is updated with the established connections, addresses, and device names
         :param device_addrs: This is a list of the form (bluetooth_address, device_complete_name)
         :param timeout: This is the number of seconds until a connection attempt is considered failed
     """
@@ -55,7 +55,7 @@ class BLEConnectionManager:
             conn = self.radio.connect(addr, timeout=timeout)
             # pairing attempt
             #conn.pair()
-            self.ble_connections.append((conn, name))
+            self.ble_connections.append((conn, addr, name))
 
     """ 
         sending a message via UART to a microcontroller in our device list.
@@ -64,11 +64,14 @@ class BLEConnectionManager:
     """
     def send_message(self, class_trigger):
         class_name = INV_MAP[class_trigger]
-        for conn, name in self.ble_connections:
+        for conn, addr, name in self.ble_connections:
+            # check if we are connected
             if class_name in name.lower():
-                conn[UARTService].write(str(class_trigger).encode('utf-8'))
-                return
-
+                if conn.connected:
+                    conn[UARTService].write(str(class_trigger).encode('utf-8'))
+                    return
+                else:
+                    print('we are not connected, will attempt to reconnect...')
 
 #manager = BLEConnectionManager()
 #for i in range(3):
