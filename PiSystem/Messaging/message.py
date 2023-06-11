@@ -1,4 +1,6 @@
 # logic for sending messages to specific microcontrollers and connecting to them
+from time import sleep
+
 from adafruit_ble import BLERadio, BLEConnection
 from PiSystem.constants import INV_MAP
 from adafruit_ble.services.nordic import UARTService
@@ -64,10 +66,12 @@ class BLEConnectionManager:
         class_name = INV_MAP[class_trigger]
         for conn, name in self.ble_connections:
             if class_name in name.lower():
-                conn[UARTService].write(str(class_trigger).encode('ascii'))
+                conn[UARTService].write(str(class_trigger).encode('utf-8'))
                 return
 
 
 #manager = BLEConnectionManager()
-#manager.send_message(4)
+#for i in range(3):
+#    manager.send_message(4)
+#    sleep(4)
 
