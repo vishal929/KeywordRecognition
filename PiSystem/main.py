@@ -14,18 +14,14 @@ from constants import ROOT_DIR,INV_MAP,SAMPLING_RATE
 import tensorflow as tf
 import numpy as np
 import sounddevice as sd
-
-import serial
-
-# function which sends a message to the specific microcontroller for this class to flip the switch
-def send_message(classname):
-    pass
-
-
+from Messaging.message import BLEConnectionManager
 
 if __name__ == '__main__':
 
     checkpoint_path = os.path.join(ROOT_DIR,"Models","Saved_Checkpoints","Current_Checkpoint")
+
+    # initialize our BLE connections to our nrf58240 boards
+    connection_manager = BLEConnectionManager()
 
     # grab our tflite model interpreter
     interpreter = grab_tflite_model(checkpoint_path)
@@ -116,7 +112,7 @@ if __name__ == '__main__':
                     # we are in the detection window, and we have detected a keyword that is not silence
                     # lets send a message to the corresponding microcontroller and reset the detection flag
                     print('sending a message to class: ' + str(detected_class) + ' with probability: ' + str(prob))
-                    send_message(detected_class)
+                    connection_manager.send_message(detected_class)
                     arduino_flag = False
                     arduino_win_count = 0
                     print('arduino window stopped due to class given')
