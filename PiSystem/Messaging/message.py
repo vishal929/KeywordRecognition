@@ -1,7 +1,7 @@
 # logic for sending messages to specific microcontrollers and connecting to them
 from time import sleep
 
-from adafruit_ble import BLERadio, BLEConnection
+from adafruit_ble import BLERadio
 from PiSystem.constants import INV_MAP
 from adafruit_ble.services.nordic import UARTService
 
@@ -64,7 +64,7 @@ class BLEConnectionManager:
     """
     def send_message(self, class_trigger):
         class_name = INV_MAP[class_trigger]
-        for conn, addr, name in self.ble_connections:
+        for idx, (conn, addr, name) in enumerate(self.ble_connections):
             # check if we are connected
             if class_name in name.lower():
                 if conn.connected:
@@ -72,9 +72,28 @@ class BLEConnectionManager:
                     return
                 else:
                     print('we are not connected, will attempt to reconnect...')
+                    devices = self.discover_devices(keyword=name,timeout=5)
+                    if len(devices) == 0:
+                        print('reconnecting to : ' + name + ' failed...')
+                        return
+                    # we have data, so get the first index
+                    # device is a tuple of (addr, device_name)
+                    device = devices[0]
+                    # reestablishing connection
+                    new_conn = self.radio.connect(device[0], timeout=5)
+                    # checking if the new connection is valid
+                    if new_conn.connected:
+                        print('successfully reconnected to: ' + device[1])
+                        # updating the list
+                        self.ble_connections[idx] = (new_conn,device[0],device[1])
+                        # doing the write
+                        new_conn[UARTService].write(str(class_trigger).encode('utf-8'))
+                        return
 
-#manager = BLEConnectionManager()
-#for i in range(3):
-#    manager.send_message(4)
-#    sleep(4)
+"""
+manager = BLEConnectionManager()
+while True:
+    manager.send_message(4)
+    sleep(4)
+"""
 
