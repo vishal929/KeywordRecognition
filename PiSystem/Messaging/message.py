@@ -60,15 +60,15 @@ class BLEConnectionManager:
     """ 
         sending a message via UART to a microcontroller in our device list.
         Device complete name + class_trigger uniquely identify the microcontroller to send the message to.
-        :param class_trigger: an integer representing the class to trigger ( this is the message to send)
+        :param class_trigger: class name of the switch to trigger (i.e bar, theater, etc. defined in constants.py)
     """
     def send_message(self, class_trigger):
-        class_name = LEARN_MAP[class_trigger]
+        class_int = LEARN_MAP[class_trigger]
         for idx, (conn, addr, name) in enumerate(self.ble_connections):
             # check if we are connected
-            if class_name in name.lower():
+            if class_trigger in name.lower():
                 if conn.connected:
-                    conn[UARTService].write(str(class_trigger).encode('utf-8'))
+                    conn[UARTService].write(str(class_int).encode('utf-8'))
                     return
                 else:
                     print('we are not connected, will attempt to reconnect...')
@@ -87,7 +87,7 @@ class BLEConnectionManager:
                         # updating the list
                         self.ble_connections[idx] = (new_conn,device[0],device[1])
                         # doing the write
-                        new_conn[UARTService].write(str(class_trigger).encode('utf-8'))
+                        new_conn[UARTService].write(str(class_int).encode('utf-8'))
                         return
 
 """
