@@ -63,7 +63,7 @@ async def main():
     adapter = await Adapter.get_first(bus)
 
     # Start an advert that will last for 60 seconds.
-    advert = Advertisement("raspberry_pi_listener", [uuid,rx_uuid], 0x0340, 0)
+    advert = Advertisement("raspberry_pi_listener", [uuid], 0, 0)
     await advert.register(bus, adapter)
 
     while True:
