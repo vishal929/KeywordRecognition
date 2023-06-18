@@ -36,7 +36,7 @@ class ListenerService(Service):
         return
     '''
 
-    @descriptor(desc1_uuid,DescFlags.READ | DescFlags.WRITE)
+    @descriptor(desc1_uuid,read_message,DescFlags.READ | DescFlags.WRITE)
     def read_message_desc1(self,value,options):
         return bytes("TXD","utf-8")
 
