@@ -58,11 +58,13 @@ class BLEConnectionManager:
         # need to check if this is a valid class
         if class_name not in SWITCH_DEVICE_MAP:
             print('invalid key -> will abort message sending...')
+            self.lock.release()
             return
         device = SWITCH_DEVICE_MAP[class_name]
         addr = self.discover_device(device)
         if addr is None:
             print(' could not connect to device: ' + str(device) +' -> will abort message sending...')
+            self.lock.release()
             return
         conn = self.radio.connect(addr, timeout=self.timeout)
         # sending the actual message
