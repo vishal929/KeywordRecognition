@@ -1,5 +1,7 @@
 import tensorflow as tf
 from PiSystem.constants import LEARN_MAP
+import os
+from PiSystem.constants import ROOT_DIR
 
 
 def conv_block(input, num_filters, kernel_size, conv_stride, pool_size, dropout_rate=0.2, pool_stride=None,
@@ -81,12 +83,24 @@ def build_model(checkPointPath=None):
 '''
     Constructs a tflite model interpreter from our keras trained weights
     keras_saved_dir is the directory to find the keras model that we have already trained
+    we save the converted model to disk so that the raspberry pi can just load that instead of converting
 '''
 def grab_tflite_model(keras_saved_dir):
+    tflite_save_dir = os.path.join(ROOT_DIR, 'Models', 'model.tflite')
+    if os.path.exists(tflite_save_dir):
+        # just load from file
+        interpreter = tf.lite.Interpreter(model_path=tflite_save_dir)
+        return interpreter
+
+    # saving to file, since it doesnt exist
     model = build_model(keras_saved_dir)
 
     converter = tf.lite.TFLiteConverter.from_keras_model(model)
     tflite_model = converter.convert()
+
+    # saving
+    with open(tflite_save_dir, 'wb') as f:
+        f.write(tflite_model)
     interpreter = tf.lite.Interpreter(model_content=tflite_model)
 
     return interpreter
