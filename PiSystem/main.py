@@ -5,6 +5,7 @@
     3) if within the detection window we detect a keyword, we send a message to the corresponding microcontroller
     4) hopefully microcontroller receives the message properly and flips their designated switch
 '''
+import asyncio
 import queue
 from time import time
 
@@ -15,11 +16,17 @@ import tensorflow as tf
 import numpy as np
 import sounddevice as sd
 from Messaging.message import BLEConnectionManager
-from Listener.listen import ListenThread
+from Listener.listen import ListenerService,uuid
 from multiprocessing import Lock
+from bluez_peripheral.gatt.service import Service
+from bluez_peripheral.gatt.characteristic import characteristic, CharacteristicFlags as CharFlags
+from bluez_peripheral.util import *
+from bluez_peripheral.advert import Advertisement
+from bluez_peripheral.agent import NoIoAgent
+from bluez_peripheral.gatt.descriptor import descriptor,DescriptorFlags as DescFlags
 
-if __name__ == '__main__':
 
+async def main():
     checkpoint_path = os.path.join(ROOT_DIR,"Models","Saved_Checkpoints","Current_Checkpoint")
 
     # initialize our BLE connections to our nrf58240 boards
@@ -54,14 +61,34 @@ if __name__ == '__main__':
     # we want to setup a listener to listen to phone messages via ble to trigger switches also!
     # this can be done via nrf connect or adafruit connect apps through the uart writers
     # we need a lock for ble
-    message_lock = Lock()
-    listen_thread = ListenThread(message_lock)
-    listen_thread.start()
+    #listen_thread = ListenThread(message_lock)
+    #listen_thread.start()
+
+    # Alternatively you can request this bus directly from dbus_next.
+    bus = await get_message_bus()
+    service = ListenerService()
+    await service.register(bus)
+
+    # An agent is required to handle pairing
+    agent = NoIoAgent()
+    # This script needs superuser for this to work.
+    await agent.register(bus)
+
+    adapter = await Adapter.get_first(bus)
+
+    # Start an advert that will last for 60 seconds.
+    advert = Advertisement("raspberry_pi_listener", [uuid], 0, 0)
+    await advert.register(bus, adapter)
 
     # counting the time for windows
     s = time()
     with stream:
         while True:
+            # listening service
+            if service.message is not None:
+                connection_manager.send_message(service.message)
+                # resetting the message
+                service.message = None
             recording_sample = None
             try:
                 # queue processing
@@ -121,11 +148,7 @@ if __name__ == '__main__':
                     # we are in the detection window, and we have detected a keyword that is not silence
                     # lets send a message to the corresponding microcontroller and reset the detection flag
                     print('sending a message to class: ' + str(detected_class) + ' with probability: ' + str(prob))
-                    if message_lock.acquire(block=False):
-                        connection_manager.send_message(detected_class)
-                        message_lock.release()
-                    else:
-                        print('message sending already in progress...')
+                    connection_manager.send_message(detected_class)
                     arduino_flag = False
                     arduino_win_count = 0
                     print('arduino window stopped due to class given')
@@ -145,3 +168,6 @@ if __name__ == '__main__':
                     arduino_flag = False
                     arduino_win_count = 0
                     print('arduino window stopped due to time window')
+
+if __name__ == '__main__':
+    asyncio.run(main())
