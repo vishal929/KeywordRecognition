@@ -7,26 +7,47 @@ from bluez_peripheral.gatt.characteristic import characteristic, CharacteristicF
 from bluez_peripheral.util import *
 from bluez_peripheral.advert import Advertisement
 from bluez_peripheral.agent import NoIoAgent
+from bluez_peripheral.gatt.descriptor import descriptor,DescriptorFlags as DescFlags
 import asyncio
 
 rx_uuid = "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"
 tx_uuid = "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"
 uuid = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"
+desc1_uuid = "2901"
+desc2_uuid = "2902"
 # service for listening to phone messages as a peripheral for BLE
 class ListenerService(Service):
     def __init__(self):
         # message that phones will write to
-        self.message = "test"
+        self.message = None
         # service UUID for nordic ble uart service (just to keep it consistent)
         super().__init__(uuid,True)
 
-    # RX characteristic of UART service
-    @characteristic(rx_uuid,CharFlags.WRITE_WITHOUT_RESPONSE)
-    def read_message(self,value,options):
+    # TX characteristic of UART service
+    @characteristic(tx_uuid,CharFlags.NOTIFY)
+    def read_message(self,options):
+        return
+
+    ''' 
+    @descriptor(desc2_uuid,DescFlags.READ)
+    def read_message_desc2(self,options):
+        return
+    '''
+
+    @descriptor(desc1_uuid,DescFlags.READ | DescFlags.WRITE)
+    def read_message_desc1(self,value,options):
+        return bytes("TXD","utf-8")
+
+    @characteristic(rx_uuid,CharFlags.WRITE|CharFlags.WRITE_WITHOUT_RESPONSE).setter
+    def set_message(self,value,options):
         self.message = value.decode('utf-8')
 
+    @descriptor(desc1_uuid,set_message,DescFlags.WRITE | DescFlags.READ)
+    def set_message_desc1(self,options):
+        return
+
 async def main():
-    # Alternativly you can request this bus directly from dbus_next.
+    # Alternatively you can request this bus directly from dbus_next.
     bus = await get_message_bus()
 
     service = ListenerService()
