@@ -3,6 +3,7 @@
 
 # below import is for serial option
 #from bluetooth import BluetoothSocket,PORT_ANY,RFCOMM,SERIAL_PORT_PROFILE,SERIAL_PORT_CLASS,advertise_service
+import asyncio
 
 from bluez_peripheral.gatt.service import Service
 from bluez_peripheral.gatt.characteristic import characteristic, CharacteristicFlags as CharFlags
@@ -10,7 +11,6 @@ from bluez_peripheral.util import *
 from bluez_peripheral.advert import Advertisement
 from bluez_peripheral.agent import NoIoAgent
 from bluez_peripheral.gatt.descriptor import descriptor,DescriptorFlags as DescFlags
-import asyncio
 
 rx_uuid = "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"
 tx_uuid = "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"
@@ -19,9 +19,9 @@ desc1_uuid = "2901"
 desc2_uuid = "2902"
 # service for listening to phone messages as a peripheral for BLE
 class ListenerService(Service):
-    def __init__(self):
-        # message that phones will write to
-        self.message = None
+    # we pass in our message handler
+    def __init__(self,message_handler):
+        self.message_handler = message_handler
         # service UUID for nordic ble uart service (just to keep it consistent)
         super().__init__(uuid,True)
 
@@ -42,38 +42,53 @@ class ListenerService(Service):
 
     @characteristic(rx_uuid,CharFlags.WRITE|CharFlags.WRITE_WITHOUT_RESPONSE).setter
     def set_message(self,value,options):
-        self.message = value.decode('utf-8')
+        # trigger our message handler
+        self.message_handler.send_message(value.decode('utf-8'))
+        #self.message = value.decode('utf-8')
 
     @descriptor(desc1_uuid,set_message,DescFlags.WRITE | DescFlags.READ)
     def set_message_desc1(self,options):
         return
 
-async def main():
-    # Alternatively you can request this bus directly from dbus_next.
-    bus = await get_message_bus()
+# class that starts up the ble processes and handles messages
+# this is done asynchronously
+# we also pass our messager object to easily handle messages if needed in the callback
+class ListenerHandler:
 
-    service = ListenerService()
-    await service.register(bus)
+   def __init__(self, message_handler):
+        self.service = ListenerService(message_handler)
+        # start the processing in async thread
+        self.ble_wrapper()
 
-    # An agent is required to handle pairing
-    agent = NoIoAgent()
-    # This script needs superuser for this to work.
-    await agent.register(bus)
+   async def start_ble_logic(self):
+       # Alternatively you can request this bus directly from dbus_next.
+       bus = await get_message_bus()
 
-    adapter = await Adapter.get_first(bus)
+       service = ListenerService()
+       await service.register(bus)
 
-    # Start an advert that will last for 60 seconds.
-    advert = Advertisement("raspberry_pi_listener", [uuid], 0, 0)
-    await advert.register(bus, adapter)
+       # An agent is required to handle pairing
+       agent = NoIoAgent()
+       # This script needs superuser for this to work.
+       await agent.register(bus)
 
-    while True:
-        print(service.message)
-        # Handle dbus requests.
-        await asyncio.sleep(5)
+       adapter = await Adapter.get_first(bus)
 
-    await bus.wait_for_disconnect()
+       # Start an advert that will last for 60 seconds.
+       advert = Advertisement("raspberry_pi_listener", [uuid], 0, 0)
+       await advert.register(bus, adapter)
 
-asyncio.run(main())
+       while True:
+           # Handle dbus requests.
+           await asyncio.sleep(5)
+
+       await bus.wait_for_disconnect()
+
+
+   def ble_wrapper(self):
+       asyncio.run(self.start_ble_logic())
+
+
 
 
 '''
@@ -117,6 +132,4 @@ client_sock.close()
 server_sock.close()
 print("All done.")
 '''
-
-
 

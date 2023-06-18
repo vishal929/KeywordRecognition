@@ -4,6 +4,7 @@ from time import sleep
 from adafruit_ble import BLERadio
 from PiSystem.constants import SWITCH_DEVICE_MAP
 from adafruit_ble.services.nordic import UARTService
+import re
 
 
 class BLEConnectionManager:
@@ -42,9 +43,21 @@ class BLEConnectionManager:
         :param class_name: this is the name of the switch to trigger, i.e "bar","theater", etc. defined in constants.py
     """
     def send_message(self,class_name):
+        # firstly filtering the class_name to be lowercase alphabetical characters only
+        class_name = class_name.strip()
+        filtered = ""
+        for c in class_name:
+            if c.isalpha():
+                filtered += c.lower()
+        class_name = filtered
+        # need to check if this is a valid class
+        if class_name not in SWITCH_DEVICE_MAP:
+            print('invalid key -> will abort message sending...')
+            return
         device = SWITCH_DEVICE_MAP[class_name]
         addr = self.discover_device(device)
         if addr is None:
+            print(' could not connect to device: ' + str(device) +' -> will abort message sending...')
             return
         conn = self.radio.connect(addr, timeout=self.timeout)
         # sending the actual message
@@ -53,13 +66,12 @@ class BLEConnectionManager:
         conn.disconnect()
         # I keep the controllers disconnected from this system in case I would like to trigger switches from my phone
 
-
 '''
 manager = BLEConnectionManager()
 while True:
-    """
     manager.send_message("theater")
     sleep(4)
     manager.send_message("bar")
     sleep(4)
+    manager.send_message(' b;;;; a ;;;; r;;; ')
 '''

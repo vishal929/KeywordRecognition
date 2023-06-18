@@ -15,6 +15,7 @@ import tensorflow as tf
 import numpy as np
 import sounddevice as sd
 from Messaging.message import BLEConnectionManager
+from Listener.listen import ListenerHandler
 
 if __name__ == '__main__':
 
@@ -48,6 +49,11 @@ if __name__ == '__main__':
 
     # setup continuous recording callback
     stream = sd.InputStream(samplerate=SAMPLING_RATE,blocksize=1*SAMPLING_RATE,channels=1,callback=record_callback,dtype='int16')
+
+    # we want to setup a listener to listen to phone messages via ble to trigger switches also!
+    # this can be done via nrf connect or adafruit connect apps through the uart writers
+    listener = ListenerHandler(connection_manager)
+
 
     # counting the time for windows
     s = time()
