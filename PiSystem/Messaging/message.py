@@ -61,18 +61,19 @@ class BLEConnectionManager:
             self.lock.release()
             return
         device = SWITCH_DEVICE_MAP[class_name]
-        addr = self.discover_device(device)
-        if addr is None:
-            print(' could not connect to device: ' + str(device) +' -> will abort message sending...')
+        try:
+            addr = self.discover_device(device)
+            if addr is None:
+                print(' could not connect to device: ' + str(device) +' -> will abort message sending...')
+                self.lock.release()
+                return
+            conn = self.radio.connect(addr, timeout=self.timeout)
+            # sending the actual message
+            conn[UARTService].write(class_name.lower().encode('ascii'))
+            # disconnecting from the controller
+            conn.disconnect()
+        finally:
             self.lock.release()
-            return
-        conn = self.radio.connect(addr, timeout=self.timeout)
-        # sending the actual message
-        conn[UARTService].write(class_name.lower().encode('ascii'))
-        # disconnecting from the controller
-        conn.disconnect()
-        # I keep the controllers disconnected from this system in case I would like to trigger switches from my phone
-        self.lock.release()
 
 '''
 manager = BLEConnectionManager()
