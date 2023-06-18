@@ -9,16 +9,21 @@ from bluez_peripheral.advert import Advertisement
 from bluez_peripheral.agent import NoIoAgent
 import asyncio
 
+rx_uuid = "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"
+tx_uuid = "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"
+uuid = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"
 # service for listening to phone messages as a peripheral for BLE
 class ListenerService(Service):
     def __init__(self):
+        # message that phones will write to
+        self.message = None
         # service UUID for nordic ble uart service (just to keep it consistent)
-        super().__init__("6E400001-B5A3-F393-E0A9-E50E24DCCA9E",True)
+        super().__init__(uuid,True)
 
     # RX characteristic of UART service
-    @characteristic("6E400002-B5A3-F393-E0A9-E50E24DCCA9E",CharFlags.WRITE_WITHOUT_RESPONSE)
-    def read_message(self,options):
-        pass
+    @characteristic(rx_uuid,CharFlags.WRITE_WITHOUT_RESPONSE)
+    def read_message(self,value,options):
+        self.message = value.decode('ascii')
 
 async def main():
     # Alternativly you can request this bus directly from dbus_next.
@@ -35,12 +40,11 @@ async def main():
     adapter = await Adapter.get_first(bus)
 
     # Start an advert that will last for 60 seconds.
-    advert = Advertisement("Heart Monitor", ["180D"], 0x0340, 60)
+    advert = Advertisement("Vishal's Pi Listener", [uuid,rx_uuid], 0x0340, 0)
     await advert.register(bus, adapter)
 
     while True:
-        # Update the heart rate.
-        service.update_heart_rate(120)
+        print(service.message)
         # Handle dbus requests.
         await asyncio.sleep(5)
 
