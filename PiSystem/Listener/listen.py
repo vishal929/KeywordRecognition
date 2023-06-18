@@ -16,14 +16,14 @@ uuid = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"
 class ListenerService(Service):
     def __init__(self):
         # message that phones will write to
-        self.message = None
+        self.message = "test"
         # service UUID for nordic ble uart service (just to keep it consistent)
         super().__init__(uuid,True)
 
     # RX characteristic of UART service
     @characteristic(rx_uuid,CharFlags.WRITE_WITHOUT_RESPONSE)
     def read_message(self,value,options):
-        self.message = value.decode('ascii')
+        self.message = value.decode('utf-8')
 
 async def main():
     # Alternativly you can request this bus directly from dbus_next.
@@ -40,7 +40,7 @@ async def main():
     adapter = await Adapter.get_first(bus)
 
     # Start an advert that will last for 60 seconds.
-    advert = Advertisement("Vishal's Pi Listener", [uuid,rx_uuid], 0x0340, 0)
+    advert = Advertisement("raspberry_pi_listener", [uuid,rx_uuid], 0x0340, 0)
     await advert.register(bus, adapter)
 
     while True:
@@ -51,7 +51,11 @@ async def main():
     await bus.wait_for_disconnect()
 
 asyncio.run(main())
+
+
 '''
+IN CASE YOU WANT TO USE SERIAL OR YOUR DEVICE DOES NOT SUPPORT LOW ENERGY BLUETOOTH
+YOU CAN USE THE BELOW CODE WITH PYBLUEZ LIBRARY TO ACCEPT STANDARD BLUETOOTH MESSAGES IN SERIAL
 server_sock = BluetoothSocket(RFCOMM)
 server_sock.bind(("", PORT_ANY))
 server_sock.listen(1)
