@@ -24,3 +24,11 @@ INV_MAP = {
     4:"theater",
     5:"silence"
 }
+
+# mapping from switches we want to trigger to device names we encounter in BLE
+SWITCH_DEVICE_MAP = {
+    "bar": "ItsyBitsy Theater+Bar",
+    "theater": "ItsyBitsy Theater+Bar",
+    "gymnasium": "ItsyBitsy Gymnasium+Stairs",
+    "stairs": "ItsyBitsy Gymnasium+Stairs"
+}
