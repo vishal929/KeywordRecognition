@@ -50,6 +50,7 @@ class BLEConnectionManager:
             if c.isalpha():
                 filtered += c.lower()
         class_name = filtered
+        print('received processed key: ' + str(class_name))
         # need to check if this is a valid class
         if class_name not in SWITCH_DEVICE_MAP:
             print('invalid key -> will abort message sending...')
