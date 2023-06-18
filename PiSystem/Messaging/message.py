@@ -65,7 +65,8 @@ class BLEConnectionManager:
             conn[UARTService].write(class_name.lower().encode('ascii'))
             # disconnecting from the controller
             conn.disconnect()
-        finally:
+        except:
+            print('exception occured while trying to send message: ' + str(class_name))
 
 '''
 manager = BLEConnectionManager()
