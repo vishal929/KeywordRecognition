@@ -52,12 +52,7 @@ if __name__ == '__main__':
 
     # we want to setup a listener to listen to phone messages via ble to trigger switches also!
     # this can be done via nrf connect or adafruit connect apps through the uart writers
-    listen_q = queue.Queue()
-    listen_q.put(connection_manager)
-    listen_thread = ListenThread(listen_q)
-    while not listen_q.empty():
-        # we should just wait until the listen thread initializes
-        continue
+    listen_thread = ListenThread()
     listen_thread.start()
     # counting the time for windows
     s = time()

@@ -4,8 +4,6 @@ from time import sleep
 from adafruit_ble import BLERadio
 from PiSystem.constants import SWITCH_DEVICE_MAP
 from adafruit_ble.services.nordic import UARTService
-import threading
-import re
 
 
 class BLEConnectionManager:
@@ -19,8 +17,6 @@ class BLEConnectionManager:
         self.radio = BLERadio()
         # we should set a timeout of seconds until the connection is considered failed
         self.timeout = timeout
-        # we should have a lock for synchronized access
-        self.lock = threading.Lock()
 
     """
         This function serves to discover a device on BLE by name so we can connect and send a message
@@ -46,7 +42,6 @@ class BLEConnectionManager:
         :param class_name: this is the name of the switch to trigger, i.e "bar","theater", etc. defined in constants.py
     """
     def send_message(self,class_name):
-        self.lock.acquire()
         # firstly filtering the class_name to be lowercase alphabetical characters only
         class_name = class_name.strip()
         filtered = ""
@@ -58,14 +53,12 @@ class BLEConnectionManager:
         # need to check if this is a valid class
         if class_name not in SWITCH_DEVICE_MAP:
             print('invalid key -> will abort message sending...')
-            self.lock.release()
             return
         device = SWITCH_DEVICE_MAP[class_name]
         try:
             addr = self.discover_device(device)
             if addr is None:
                 print(' could not discover device: ' + str(device) +' -> will abort message sending...')
-                self.lock.release()
                 return
             conn = self.radio.connect(addr, timeout=self.timeout)
             # sending the actual message
@@ -73,7 +66,6 @@ class BLEConnectionManager:
             # disconnecting from the controller
             conn.disconnect()
         finally:
-            self.lock.release()
 
 '''
 manager = BLEConnectionManager()

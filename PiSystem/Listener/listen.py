@@ -13,6 +13,10 @@ from bluez_peripheral.advert import Advertisement
 from bluez_peripheral.agent import NoIoAgent
 from bluez_peripheral.gatt.descriptor import descriptor,DescriptorFlags as DescFlags
 
+from multiprocessing import Process
+
+from PiSystem.Messaging.message import BLEConnectionManager
+
 rx_uuid = "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"
 tx_uuid = "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"
 uuid = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"
@@ -21,8 +25,8 @@ desc2_uuid = "2902"
 # service for listening to phone messages as a peripheral for BLE
 class ListenerService(Service):
     # we pass in our message handler
-    def __init__(self,message_handler):
-        self.message_handler = message_handler
+    def __init__(self):
+        self.message = None
         # service UUID for nordic ble uart service (just to keep it consistent)
         super().__init__(uuid,True)
 
@@ -44,24 +48,22 @@ class ListenerService(Service):
     @characteristic(rx_uuid,CharFlags.WRITE|CharFlags.WRITE_WITHOUT_RESPONSE).setter
     def set_message(self,value,options):
         # trigger our message handler
-        self.message_handler.send_message(value.decode('utf-8'))
-        #self.message = value.decode('utf-8')
+        self.message = value.decode('utf-8')
 
     @descriptor(desc1_uuid,set_message,DescFlags.WRITE | DescFlags.READ)
     def set_message_desc1(self,options):
         return
 
-class ListenThread(Thread):
+class ListenThread(Process):
 
-    def __init__(self, queue):
+    def __init__(self):
         super().__init__()
-        self.queue = queue
-        # the queue should have a single item reference in it: the message handler
-        self.message_handler = queue.get()
+        # this process will have its own connection manager
+        self.message_handler = BLEConnectionManager()
     async def start_ble_logic(self):
        # Alternatively you can request this bus directly from dbus_next.
        bus = await get_message_bus()
-       service = ListenerService(self.message_handler)
+       service = ListenerService()
        await service.register(bus)
 
        # An agent is required to handle pairing
@@ -76,6 +78,10 @@ class ListenThread(Thread):
        await advert.register(bus, adapter)
 
        while True:
+           if service.message is not None:
+               self.message_handler.send_message(service.message)
+               # resetting the message
+               service.message = None
            # Handle dbus requests.
            await asyncio.sleep(5)
 
