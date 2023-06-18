@@ -4,6 +4,7 @@
 # below import is for serial option
 #from bluetooth import BluetoothSocket,PORT_ANY,RFCOMM,SERIAL_PORT_PROFILE,SERIAL_PORT_CLASS,advertise_service
 import asyncio
+from threading import Thread
 
 from bluez_peripheral.gatt.service import Service
 from bluez_peripheral.gatt.characteristic import characteristic, CharacteristicFlags as CharFlags
@@ -50,19 +51,18 @@ class ListenerService(Service):
     def set_message_desc1(self,options):
         return
 
-# class that starts up the ble processes and handles messages
-# this is done asynchronously
-# we also pass our messager object to easily handle messages if needed in the callback
-class ListenerHandler:
+class ListenThread(Thread):
 
-   def __init__(self, message_handler):
-        self.service = ListenerService(message_handler)
-
-   async def start_ble_logic(self):
+    def __init__(self, queue):
+        super().__init__()
+        self.queue = queue
+        # the queue should have a single item reference in it: the message handler
+        self.message_handler = queue.get()
+    async def start_ble_logic(self):
        # Alternatively you can request this bus directly from dbus_next.
        bus = await get_message_bus()
-
-       await self.service.register(bus)
+       service = ListenerService(self.message_handler)
+       await service.register(bus)
 
        # An agent is required to handle pairing
        agent = NoIoAgent()
@@ -82,11 +82,8 @@ class ListenerHandler:
        await bus.wait_for_disconnect()
 
 
-   def ble_wrapper(self):
+    def run(self):
        asyncio.run(self.start_ble_logic())
-
-
-
 
 '''
 IN CASE YOU WANT TO USE SERIAL OR YOUR DEVICE DOES NOT SUPPORT LOW ENERGY BLUETOOTH
