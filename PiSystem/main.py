@@ -16,6 +16,7 @@ import numpy as np
 import sounddevice as sd
 from Messaging.message import BLEConnectionManager
 from Listener.listen import ListenThread
+from multiprocessing import Lock
 
 if __name__ == '__main__':
 
@@ -52,8 +53,11 @@ if __name__ == '__main__':
 
     # we want to setup a listener to listen to phone messages via ble to trigger switches also!
     # this can be done via nrf connect or adafruit connect apps through the uart writers
-    listen_thread = ListenThread()
+    # we need a lock for ble
+    message_lock = Lock()
+    listen_thread = ListenThread(message_lock)
     listen_thread.start()
+
     # counting the time for windows
     s = time()
     with stream:
@@ -117,7 +121,11 @@ if __name__ == '__main__':
                     # we are in the detection window, and we have detected a keyword that is not silence
                     # lets send a message to the corresponding microcontroller and reset the detection flag
                     print('sending a message to class: ' + str(detected_class) + ' with probability: ' + str(prob))
-                    connection_manager.send_message(detected_class)
+                    if message_lock.acquire(block=False):
+                        connection_manager.send_message(detected_class)
+                        message_lock.release()
+                    else:
+                        print('message sending already in progress...')
                     arduino_flag = False
                     arduino_win_count = 0
                     print('arduino window stopped due to class given')

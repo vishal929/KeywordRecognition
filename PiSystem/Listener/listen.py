@@ -56,10 +56,12 @@ class ListenerService(Service):
 
 class ListenThread(Process):
 
-    def __init__(self):
+    def __init__(self, lock):
         super().__init__()
         # this process will have its own connection manager
         self.message_handler = BLEConnectionManager()
+        # need a lock for ble services
+        self.lock = lock
     async def start_ble_logic(self):
        # Alternatively you can request this bus directly from dbus_next.
        bus = await get_message_bus()
@@ -79,7 +81,9 @@ class ListenThread(Process):
 
        while True:
            if service.message is not None:
-               self.message_handler.send_message(service.message)
+               if self.lock.acquire():
+                    self.message_handler.send_message(service.message)
+                    self.lock.release()
                # resetting the message
                service.message = None
            # Handle dbus requests.
