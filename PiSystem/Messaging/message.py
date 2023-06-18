@@ -64,7 +64,7 @@ class BLEConnectionManager:
         try:
             addr = self.discover_device(device)
             if addr is None:
-                print(' could not connect to device: ' + str(device) +' -> will abort message sending...')
+                print(' could not discover device: ' + str(device) +' -> will abort message sending...')
                 self.lock.release()
                 return
             conn = self.radio.connect(addr, timeout=self.timeout)
