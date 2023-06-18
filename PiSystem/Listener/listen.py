@@ -81,7 +81,7 @@ class ListenThread(Process):
 
        while True:
            if service.message is not None:
-               if self.lock.acquire(blocking=False):
+               if self.lock.acquire(block=False):
                     self.message_handler.send_message(service.message)
                     self.lock.release()
                # resetting the message
