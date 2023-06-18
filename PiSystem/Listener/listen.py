@@ -57,8 +57,6 @@ class ListenerHandler:
 
    def __init__(self, message_handler):
         self.service = ListenerService(message_handler)
-        # start the processing in async thread
-        self.ble_wrapper()
 
    async def start_ble_logic(self):
        # Alternatively you can request this bus directly from dbus_next.

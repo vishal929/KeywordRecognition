@@ -16,6 +16,7 @@ import numpy as np
 import sounddevice as sd
 from Messaging.message import BLEConnectionManager
 from Listener.listen import ListenerHandler
+from multiprocessing import Process
 
 if __name__ == '__main__':
 
@@ -53,8 +54,8 @@ if __name__ == '__main__':
     # we want to setup a listener to listen to phone messages via ble to trigger switches also!
     # this can be done via nrf connect or adafruit connect apps through the uart writers
     listener = ListenerHandler(connection_manager)
-
-
+    listen_proc = Process(target=ListenerHandler.ble_wrapper,args=(listener))
+    listen_proc.start()
     # counting the time for windows
     s = time()
     with stream:
