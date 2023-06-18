@@ -64,8 +64,7 @@ class ListenerHandler:
        # Alternatively you can request this bus directly from dbus_next.
        bus = await get_message_bus()
 
-       service = ListenerService()
-       await service.register(bus)
+       await self.service.register(bus)
 
        # An agent is required to handle pairing
        agent = NoIoAgent()
