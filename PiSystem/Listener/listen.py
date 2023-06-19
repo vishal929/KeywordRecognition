@@ -79,7 +79,6 @@ class ListenThread(Process):
                Thread(target=send_message,args=service.message).start()
                # resetting the message
                service.message = None
-               self.ble_mutex.release()
            # Handle dbus requests.
            await asyncio.sleep(5)
 
