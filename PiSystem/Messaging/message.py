@@ -1,4 +1,5 @@
 # logic for sending messages to specific microcontrollers and connecting to them
+from threading import Thread
 from time import sleep
 
 from adafruit_ble import BLERadio
@@ -138,4 +139,4 @@ async def send_message_async(class_tag):
     '''
 
 def send_message(class_tag):
-    asyncio.run(send_message(class_tag))
+    asyncio.run(send_message_async(class_tag))
