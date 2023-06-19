@@ -77,7 +77,9 @@ class ListenThread(Process):
        while True:
            if service.message is not None:
                # starting a process to send a message
-               Process(target=send_message,args=(service.message,self.mutex)).start()
+               # sending a message
+               proc = Process(target=send_message,args=(service.message,self.mutex))
+               proc.start()
                # resetting the message
                service.message = None
            # Handle dbus requests.

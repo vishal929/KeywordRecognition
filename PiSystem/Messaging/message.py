@@ -115,19 +115,24 @@ async def send_message_async(class_tag):
 
 
 
-    #device = await BleakScanner.find_device_by_name(device_name)
-    #print(device)
-    # connection and message sending
-    devices = set()
-    # setup
-    initial_time = time()
+    device = await BleakScanner.find_device_by_name(device_name,timeout=10)
+    if device is None:
+        print('failed to find the device')
+        return
+
+    print(device)
 
     def handle_disconnect(_: BleakClient):
         print("Device was disconnected, goodbye.")
-        # cancelling all tasks effectively ends the program
-        for task in asyncio.all_tasks():
-            task.cancel()
 
+    async with BleakClient(device, handle_disconnect) as client:
+        nus = client.services.get_service(UART_SERVICE_UUID)
+        rx_char = nus.get_characteristic(UART_RX_CHAR_UUID)
+        await client.write_gatt_char(rx_char, class_tag.encode('ascii'))
+        await client.disconnect()
+
+
+    '''
     async def connection_callback(device: BLEDevice, adv: AdvertisementData):
         curr_time = time()
         if curr_time-initial_time>10:
@@ -145,25 +150,23 @@ async def send_message_async(class_tag):
                     await client.write_gatt_char(rx_char, class_tag.encode('ascii'))
                     # issue the stop event
                     stop_event.set()
+    
 
-    '''
     async with BleakClient(device,handle_disconnect) as client:
         nus = client.services.get_service(UART_SERVICE_UUID)
         rx_char = nus.get_characteristic(UART_RX_CHAR_UUID)
         await client.write_gatt_char(rx_char,class_tag.encode('ascii'))
-    '''
 
-    '''
     def callback(device, advertising_data):
         if device.name is not None and device_name in device.name:
             # we have the device, lets send the message
             stop_event.set()
-    '''
     async with BleakScanner(connection_callback) as scanner:
         ...
         # Important! Wait for an event to trigger stop, otherwise scanner
         # will stop immediately.
         await stop_event.wait()
+    '''
 
 def send_message(class_tag,ble_mutex):
     ble_mutex.acquire()
