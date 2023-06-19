@@ -4,7 +4,7 @@ from time import sleep
 from adafruit_ble import BLERadio
 from PiSystem.constants import SWITCH_DEVICE_MAP
 from adafruit_ble.services.nordic import UARTService
-
+from multiprocessing import Lock
 
 class BLEConnectionManager:
     """
@@ -17,6 +17,8 @@ class BLEConnectionManager:
         self.radio = BLERadio()
         # we should set a timeout of seconds until the connection is considered failed
         self.timeout = timeout
+        # we should try and acquire a lock everytime we use the ble service
+        self.ble_lock = Lock()
 
     """
         This function serves to discover a device on BLE by name so we can connect and send a message
@@ -42,32 +44,35 @@ class BLEConnectionManager:
         :param class_name: this is the name of the switch to trigger, i.e "bar","theater", etc. defined in constants.py
     """
     def send_message(self,class_name):
-        # firstly filtering the class_name to be lowercase alphabetical characters only
-        class_name = class_name.strip()
-        filtered = ""
-        for c in class_name:
-            if c.isalpha():
-                filtered += c.lower()
-        class_name = filtered
-        print('received processed key: ' + str(class_name))
-        # need to check if this is a valid class
-        if class_name not in SWITCH_DEVICE_MAP:
-            print('invalid key -> will abort message sending...')
-            return
-        device = SWITCH_DEVICE_MAP[class_name]
-        try:
-            addr = self.discover_device(device)
-            if addr is None:
-                print(' could not discover device: ' + str(device) +' -> will abort message sending...')
-                return
-            conn = self.radio.connect(addr, timeout=self.timeout)
-            # sending the actual message
-            conn[UARTService].write(class_name.lower().encode('ascii'))
-            # disconnecting from the controller
-            conn.disconnect()
-        except Exception as e:
-            print('exception occured while trying to send message: ' + str(class_name))
-            print('exception string: ' + str(e))
+        if self.ble_lock.acquire():
+            try:
+                # firstly filtering the class_name to be lowercase alphabetical characters only
+                class_name = class_name.strip()
+                filtered = ""
+                for c in class_name:
+                    if c.isalpha():
+                        filtered += c.lower()
+                class_name = filtered
+                print('received processed key: ' + str(class_name))
+                # need to check if this is a valid class
+                if class_name not in SWITCH_DEVICE_MAP:
+                    print('invalid key -> will abort message sending...')
+                    return
+                device = SWITCH_DEVICE_MAP[class_name]
+                addr = self.discover_device(device)
+                if addr is None:
+                    print(' could not discover device: ' + str(device) +' -> will abort message sending...')
+                    return
+                conn = self.radio.connect(addr, timeout=self.timeout)
+                # sending the actual message
+                conn[UARTService].write(class_name.lower().encode('ascii'))
+                # disconnecting from the controller
+                conn.disconnect()
+            except Exception as e:
+                print('exception occured while trying to send message: ' + str(class_name))
+                print('exception string: ' + str(e))
+            finally:
+                self.ble_lock.release()
 
 '''
 manager = BLEConnectionManager()

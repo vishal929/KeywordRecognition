@@ -16,7 +16,7 @@ import tensorflow as tf
 import numpy as np
 import sounddevice as sd
 from Messaging.message import BLEConnectionManager
-from Listener.listen import ListenerService,uuid
+from Listener.listen import ListenerService, uuid, ListenThread
 from multiprocessing import Lock
 from bluez_peripheral.gatt.service import Service
 from bluez_peripheral.gatt.characteristic import characteristic, CharacteristicFlags as CharFlags
@@ -61,45 +61,15 @@ async def main():
     # we want to setup a listener to listen to phone messages via ble to trigger switches also!
     # this can be done via nrf connect or adafruit connect apps through the uart writers
     # we need a lock for ble
-    #listen_thread = ListenThread(message_lock)
-    #listen_thread.start()
-
-    # Alternatively you can request this bus directly from dbus_next.
-    bus = await get_message_bus()
-    service = ListenerService()
-    await service.register(bus)
-
-    # An agent is required to handle pairing
-    agent = NoIoAgent()
-    # This script needs superuser for this to work.
-    await agent.register(bus)
-
-    adapter = await Adapter.get_first(bus)
-
-    # Start an advert that will last for 60 seconds.
-    advert = Advertisement("raspberry_pi_listener", [uuid], 0, 0)
-    await advert.register(bus, adapter)
-
-    while True:
-        if service.message is not None:
-            connection_manager.send_message(service.message)
-            # resetting the message
-            service.message = None
-        # Handle dbus requests.
-        await asyncio.sleep(5)
-
-    await bus.wait_for_disconnect()
+    listen_queue = queue.Queue()
+    listen_queue.put(connection_manager,block=True)
+    listen_thread = ListenThread(listen_queue)
+    listen_thread.start()
 
     # counting the time for windows
     s = time()
     with stream:
         while True:
-            # listening service
-            print(service.message)
-            if service.message is not None:
-                connection_manager.send_message(service.message)
-                # resetting the message
-                service.message = None
             recording_sample = None
             try:
                 # queue processing
