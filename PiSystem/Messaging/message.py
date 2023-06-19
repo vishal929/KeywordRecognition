@@ -88,7 +88,7 @@ while True:
 
 
 async def send_message_async(class_tag):
-    #stop_event = asyncio.Event()
+    stop_event = asyncio.Event()
     # handling string cleaning
     filtered = ""
     for c in class_tag:
@@ -111,33 +111,50 @@ async def send_message_async(class_tag):
         return False
     '''
 
-    device = await BleakScanner.find_device_by_name(device_name)
-    print(device)
-    # connection and message sending
 
+
+    #device = await BleakScanner.find_device_by_name(device_name)
+    #print(device)
+    # connection and message sending
+    devices = set()
     def handle_disconnect(_: BleakClient):
         print("Device was disconnected, goodbye.")
         # cancelling all tasks effectively ends the program
         #for task in asyncio.all_tasks():
         #    task.cancel()
 
+    async def connection_callback(device: BLEDevice, adv: AdvertisementData):
+        if device.name is None:
+            return
+        if device not in devices:
+            devices.add(device)
+            if device_name in device.name:
+                print(device.name)
+                async with BleakClient(device, handle_disconnect) as client:
+                    nus = client.services.get_service(UART_SERVICE_UUID)
+                    rx_char = nus.get_characteristic(UART_RX_CHAR_UUID)
+                    await client.write_gatt_char(rx_char, class_tag.encode('ascii'))
+                    # issue the stop event
+                    stop_event.set()
+
+    '''
     async with BleakClient(device,handle_disconnect) as client:
         nus = client.services.get_service(UART_SERVICE_UUID)
         rx_char = nus.get_characteristic(UART_RX_CHAR_UUID)
         await client.write_gatt_char(rx_char,class_tag.encode('ascii'))
+    '''
 
     '''
     def callback(device, advertising_data):
         if device.name is not None and device_name in device.name:
             # we have the device, lets send the message
             stop_event.set()
-
-    async with BleakScanner(callback) as scanner:
+    '''
+    async with BleakScanner(connection_callback) as scanner:
         ...
         # Important! Wait for an event to trigger stop, otherwise scanner
         # will stop immediately.
         await stop_event.wait()
-    '''
 
 def send_message(class_tag,ble_mutex):
     ble_mutex.acquire()
