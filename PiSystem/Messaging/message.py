@@ -117,8 +117,8 @@ async def send_message_async(class_tag):
     def handle_disconnect(_: BleakClient):
         print("Device was disconnected, goodbye.")
         # cancelling all tasks effectively ends the program
-        for task in asyncio.all_tasks():
-            task.cancel()
+        #for task in asyncio.all_tasks():
+        #    task.cancel()
 
     async with BleakClient(device,handle_disconnect) as client:
         nus = client.services.get_service(UART_SERVICE_UUID)
