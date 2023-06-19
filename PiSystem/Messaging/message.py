@@ -4,6 +4,7 @@ from time import sleep
 from adafruit_ble import BLERadio
 from PiSystem.constants import SWITCH_DEVICE_MAP
 from adafruit_ble.services.nordic import UARTService
+from bluetooth.ble import DiscoveryService
 from multiprocessing import Lock
 
 class BLEConnectionManager:
@@ -80,3 +81,9 @@ while True:
     sleep(4)
     manager.send_message(' b;;;; a ;;;; r;;; ')
 '''
+
+service = DiscoveryService()
+devices = service.discover(2)
+
+for address, name in devices.items():
+    print("Name: {}, address: {}".format(name, address))
