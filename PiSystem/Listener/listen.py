@@ -79,7 +79,7 @@ class ListenThread(Process):
 
        while True:
            if service.message is not None:
-               self.message_handler.send_message(service.message)
+               self.connection_manager.send_message(service.message)
                # resetting the message
                service.message = None
            # Handle dbus requests.
