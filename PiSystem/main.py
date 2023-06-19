@@ -80,11 +80,22 @@ async def main():
     advert = Advertisement("raspberry_pi_listener", [uuid], 0, 0)
     await advert.register(bus, adapter)
 
+    while True:
+        if service.message is not None:
+            connection_manager.send_message(service.message)
+            # resetting the message
+            service.message = None
+        # Handle dbus requests.
+        await asyncio.sleep(5)
+
+    await bus.wait_for_disconnect()
+
     # counting the time for windows
     s = time()
     with stream:
         while True:
             # listening service
+            print(service.message)
             if service.message is not None:
                 connection_manager.send_message(service.message)
                 # resetting the message
