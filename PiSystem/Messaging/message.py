@@ -2,11 +2,13 @@
 from time import sleep
 
 from adafruit_ble import BLERadio
-from PiSystem.constants import SWITCH_DEVICE_MAP
+from PiSystem.constants import SWITCH_DEVICE_MAP,UART_SERVICE_UUID,UART_RX_CHAR_UUID
 from adafruit_ble.services.nordic import UARTService
-from bluetooth.ble import DiscoveryService
-from multiprocessing import Lock
+from bleak import BleakScanner,BLEDevice,AdvertisementData,BleakClient
+from bleak.backends.characteristic import BleakGATTCharacteristic
+import asyncio
 
+'''
 class BLEConnectionManager:
     """
         Constructor for our BLE Connection Manager
@@ -71,7 +73,7 @@ class BLEConnectionManager:
             print('exception string: ' + str(e))
         finally:
             return
-
+'''
 '''
 manager = BLEConnectionManager()
 while True:
@@ -82,8 +84,58 @@ while True:
     manager.send_message(' b;;;; a ;;;; r;;; ')
 '''
 
-service = DiscoveryService()
-devices = service.discover(2)
 
-for address, name in devices.items():
-    print("Name: {}, address: {}".format(name, address))
+async def send_message_async(class_tag):
+    #stop_event = asyncio.Event()
+    # handling string cleaning
+    filtered = ""
+    for c in class_tag:
+        if c.isalpha():
+            filtered += c.lower()
+    class_tag = filtered
+    if class_tag not in SWITCH_DEVICE_MAP:
+        # invalid tag given we abort
+        print('invalid tag given: ' + str(class_tag))
+        return
+
+    device_name = SWITCH_DEVICE_MAP[class_tag]
+    # TODO: add something that calls stop_event.set()
+
+    '''
+    def device_filter(device: BLEDevice, adv: AdvertisementData):
+        if device.name is not None and device_name in device.name:
+            # we have the device
+            return True
+        return False
+    '''
+
+    device = await BleakScanner.find_device_by_name(device_name)
+    print(device)
+    # connection and message sending
+
+    def handle_disconnect(_: BleakClient):
+        print("Device was disconnected, goodbye.")
+        # cancelling all tasks effectively ends the program
+        for task in asyncio.all_tasks():
+            task.cancel()
+
+    async with BleakClient(device,handle_disconnect) as client:
+        nus = client.services.get_service(UART_SERVICE_UUID)
+        rx_char = nus.get_characteristic(UART_RX_CHAR_UUID)
+        await client.write_gatt_char(rx_char,class_tag.encode('ascii'))
+
+    '''
+    def callback(device, advertising_data):
+        if device.name is not None and device_name in device.name:
+            # we have the device, lets send the message
+            stop_event.set()
+
+    async with BleakScanner(callback) as scanner:
+        ...
+        # Important! Wait for an event to trigger stop, otherwise scanner
+        # will stop immediately.
+        await stop_event.wait()
+    '''
+
+def send_message(class_tag):
+    asyncio.run(send_message(class_tag))
