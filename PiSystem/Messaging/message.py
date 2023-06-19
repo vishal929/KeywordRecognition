@@ -88,7 +88,7 @@ while True:
 
 
 async def send_message_async(class_tag):
-    stop_event = asyncio.Event()
+    #stop_event = asyncio.Event()
     # handling string cleaning
     filtered = ""
     for c in class_tag:
@@ -98,8 +98,8 @@ async def send_message_async(class_tag):
     if class_tag not in SWITCH_DEVICE_MAP:
         # invalid tag given we abort
         print('invalid tag given: ' + str(class_tag))
-        for task in asyncio.all_tasks():
-            task.cancel()
+        #for task in asyncio.all_tasks():
+        #task.cancel()
         return
 
     device_name = SWITCH_DEVICE_MAP[class_tag]
