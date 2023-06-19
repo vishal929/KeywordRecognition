@@ -119,6 +119,7 @@ async def send_message_async(class_tag):
     if device is None:
         print('failed to find the device')
         return
+    await BleakScanner.stop()
 
     print(device)
 
@@ -130,6 +131,7 @@ async def send_message_async(class_tag):
         rx_char = nus.get_characteristic(UART_RX_CHAR_UUID)
         await client.write_gatt_char(rx_char, class_tag.encode('ascii'))
         await client.disconnect()
+    await BleakScanner.stop()
 
 
     '''
