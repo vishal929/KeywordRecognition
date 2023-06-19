@@ -80,7 +80,8 @@ class ListenThread(Process):
        await advert.register(bus, adapter)
 
        while True:
-           if service.message is not None and self.ble_mutex.acquire():
+           if service.message is not None:
+               self.ble_mutex.acquire()
                self.connection_manager.send_message(service.message)
                # resetting the message
                service.message = None

@@ -125,9 +125,9 @@ async def main():
                     # we are in the detection window, and we have detected a keyword that is not silence
                     # lets send a message to the corresponding microcontroller and reset the detection flag
                     print('sending a message to class: ' + str(detected_class) + ' with probability: ' + str(prob))
-                    if ble_lock.acquire():
-                        connection_manager.send_message(detected_class)
-                        ble_lock.release()
+                    ble_lock.acquire()
+                    connection_manager.send_message(detected_class)
+                    ble_lock.release()
                     arduino_flag = False
                     arduino_win_count = 0
                     print('arduino window stopped due to class given')
