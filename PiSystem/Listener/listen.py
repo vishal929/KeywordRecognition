@@ -53,10 +53,9 @@ class ListenerService(Service):
 
 class ListenThread(Process):
 
-    def __init__(self, queue):
+    def __init__(self):
         super().__init__()
-        # we will have our own connection manager but a shared mutex for ble requests
-        self.ble_mutex = queue.get_nowait()
+
     async def start_ble_logic(self):
        # Alternatively you can request this bus directly from dbus_next.
        bus = await get_message_bus()
@@ -76,8 +75,8 @@ class ListenThread(Process):
 
        while True:
            if service.message is not None:
-               # starting a process to send a message
-               Process(target=send_message,args=service.message).start()
+               # starting a thread to send a message
+               Thread(target=send_message,args=service.message).start()
                # resetting the message
                service.message = None
                self.ble_mutex.release()

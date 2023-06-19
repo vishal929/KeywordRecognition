@@ -7,6 +7,7 @@
 '''
 import asyncio
 import queue
+from threading import Thread
 from time import time
 
 from Models.model import grab_tflite_model
@@ -125,7 +126,7 @@ async def main():
                     # we are in the detection window, and we have detected a keyword that is not silence
                     # lets send a message to the corresponding microcontroller and reset the detection flag
                     print('sending a message to class: ' + str(detected_class) + ' with probability: ' + str(prob))
-                    Process(target=send_message, args=detected_class)
+                    Thread(target=send_message, args=detected_class).start()
                     #ble_lock.acquire()
                     #connection_manager.send_message(detected_class)
                     #ble_lock.release()
