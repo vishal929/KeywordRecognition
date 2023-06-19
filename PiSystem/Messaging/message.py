@@ -1,7 +1,7 @@
 # logic for sending messages to specific microcontrollers and connecting to them
 from threading import Thread
 from multiprocessing import Process,Lock
-from time import sleep
+from time import sleep, time
 
 from adafruit_ble import BLERadio
 from PiSystem.constants import SWITCH_DEVICE_MAP,UART_SERVICE_UUID,UART_RX_CHAR_UUID
@@ -98,6 +98,8 @@ async def send_message_async(class_tag):
     if class_tag not in SWITCH_DEVICE_MAP:
         # invalid tag given we abort
         print('invalid tag given: ' + str(class_tag))
+        for task in asyncio.all_tasks():
+            task.cancel()
         return
 
     device_name = SWITCH_DEVICE_MAP[class_tag]
@@ -117,13 +119,20 @@ async def send_message_async(class_tag):
     #print(device)
     # connection and message sending
     devices = set()
+    # setup
+    initial_time = time()
+
     def handle_disconnect(_: BleakClient):
         print("Device was disconnected, goodbye.")
         # cancelling all tasks effectively ends the program
-        #for task in asyncio.all_tasks():
-        #    task.cancel()
+        for task in asyncio.all_tasks():
+            task.cancel()
 
     async def connection_callback(device: BLEDevice, adv: AdvertisementData):
+        curr_time = time()
+        if curr_time-initial_time>10:
+            print('connection timeout...')
+            stop_event.set()
         if device.name is None:
             return
         if device not in devices:
@@ -161,8 +170,8 @@ def send_message(class_tag,ble_mutex):
     asyncio.run(send_message_async(class_tag))
     ble_mutex.release()
 
-'''
 if __name__ == '__main__':
+    # testing
     ble_mutex = Lock()
     p = Process(target=send_message, args=('bar',ble_mutex))
     p2 = Process(target=send_message, args=('theater',ble_mutex))
@@ -171,4 +180,3 @@ if __name__ == '__main__':
 
     p.join()
     p2.join()
-'''
