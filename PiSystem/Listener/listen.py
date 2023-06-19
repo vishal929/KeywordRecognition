@@ -76,7 +76,7 @@ class ListenThread(Process):
        while True:
            if service.message is not None:
                # starting a thread to send a message
-               Thread(target=send_message,args=service.message).start()
+               Thread(target=send_message,args=str(service.message)).start()
                # resetting the message
                service.message = None
            # Handle dbus requests.
