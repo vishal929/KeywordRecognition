@@ -60,7 +60,7 @@ async def main():
     ble_lock = Lock()
     listen_queue = queue.Queue()
     listen_queue.put(ble_lock,block=True)
-    listen_thread = ListenThread(listen_queue)
+    listen_thread = ListenThread()
     listen_thread.start()
 
     # counting the time for windows
