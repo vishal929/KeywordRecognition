@@ -60,7 +60,7 @@ async def main():
     ble_lock = Lock()
     listen_queue = queue.Queue()
     listen_queue.put(ble_lock,block=True)
-    listen_thread = ListenThread()
+    listen_thread = ListenThread(ble_lock)
     listen_thread.start()
 
     # counting the time for windows
@@ -126,7 +126,7 @@ async def main():
                     # we are in the detection window, and we have detected a keyword that is not silence
                     # lets send a message to the corresponding microcontroller and reset the detection flag
                     print('sending a message to class: ' + str(detected_class) + ' with probability: ' + str(prob))
-                    Thread(target=send_message, args=(detected_class,)).start()
+                    Process(target=send_message, args=(detected_class,ble_lock)).start()
                     #ble_lock.acquire()
                     #connection_manager.send_message(detected_class)
                     #ble_lock.release()

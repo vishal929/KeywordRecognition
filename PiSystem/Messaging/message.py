@@ -1,5 +1,6 @@
 # logic for sending messages to specific microcontrollers and connecting to them
 from threading import Thread
+from multiprocessing import Process,Lock
 from time import sleep
 
 from adafruit_ble import BLERadio
@@ -138,5 +139,19 @@ async def send_message_async(class_tag):
         await stop_event.wait()
     '''
 
-def send_message(class_tag):
+def send_message(class_tag,ble_mutex):
+    ble_mutex.acquire()
     asyncio.run(send_message_async(class_tag))
+    ble_mutex.release()
+
+'''
+if __name__ == '__main__':
+    ble_mutex = Lock()
+    p = Process(target=send_message, args=('bar',ble_mutex))
+    p2 = Process(target=send_message, args=('theater',ble_mutex))
+    p.start()
+    p2.start()
+
+    p.join()
+    p2.join()
+'''
