@@ -18,12 +18,7 @@ import sounddevice as sd
 from Messaging.message import BLEConnectionManager
 from Listener.listen import ListenerService, uuid, ListenThread
 from multiprocessing import Lock
-from bluez_peripheral.gatt.service import Service
-from bluez_peripheral.gatt.characteristic import characteristic, CharacteristicFlags as CharFlags
-from bluez_peripheral.util import *
-from bluez_peripheral.advert import Advertisement
-from bluez_peripheral.agent import NoIoAgent
-from bluez_peripheral.gatt.descriptor import descriptor,DescriptorFlags as DescFlags
+
 
 
 async def main():
@@ -61,8 +56,9 @@ async def main():
     # we want to setup a listener to listen to phone messages via ble to trigger switches also!
     # this can be done via nrf connect or adafruit connect apps through the uart writers
     # we need a lock for ble
+    ble_lock = Lock()
     listen_queue = queue.Queue()
-    listen_queue.put(connection_manager,block=True)
+    listen_queue.put(ble_lock,block=True)
     listen_thread = ListenThread(listen_queue)
     listen_thread.start()
 
@@ -129,7 +125,9 @@ async def main():
                     # we are in the detection window, and we have detected a keyword that is not silence
                     # lets send a message to the corresponding microcontroller and reset the detection flag
                     print('sending a message to class: ' + str(detected_class) + ' with probability: ' + str(prob))
-                    connection_manager.send_message(detected_class)
+                    if ble_lock.acquire():
+                        connection_manager.send_message(detected_class)
+                        ble_lock.release()
                     arduino_flag = False
                     arduino_win_count = 0
                     print('arduino window stopped due to class given')

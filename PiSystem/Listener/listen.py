@@ -59,7 +59,9 @@ class ListenThread(Process):
     def __init__(self, queue):
         super().__init__()
         # the queue here will have a reference to the connection manager to use
-        self.connection_manager = queue.get_nowait()
+        self.connection_manager = BLEConnectionManager()
+        # we will have our own connection manager but a shared mutex for ble requests
+        self.ble_mutex = queue.get_nowait()
     async def start_ble_logic(self):
        # Alternatively you can request this bus directly from dbus_next.
        bus = await get_message_bus()
@@ -78,10 +80,11 @@ class ListenThread(Process):
        await advert.register(bus, adapter)
 
        while True:
-           if service.message is not None:
+           if service.message is not None and self.ble_mutex.acquire():
                self.connection_manager.send_message(service.message)
                # resetting the message
                service.message = None
+               self.ble_mutex.release()
            # Handle dbus requests.
            await asyncio.sleep(5)
 
