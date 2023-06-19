@@ -14,12 +14,9 @@ from bluez_peripheral.agent import NoIoAgent
 from bluez_peripheral.gatt.descriptor import descriptor,DescriptorFlags as DescFlags
 
 from multiprocessing import Process
+from PiSystem.constants import UART_RX_CHAR_UUID as rx_uuid, UART_TX_CHAR_UUID as tx_uuid, UART_SERVICE_UUID as uuid
+from PiSystem.Messaging.message import send_message
 
-from PiSystem.Messaging.message import BLEConnectionManager
-
-rx_uuid = "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"
-tx_uuid = "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"
-uuid = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"
 desc1_uuid = "2901"
 desc2_uuid = "2902"
 # service for listening to phone messages as a peripheral for BLE
@@ -58,8 +55,6 @@ class ListenThread(Process):
 
     def __init__(self, queue):
         super().__init__()
-        # the queue here will have a reference to the connection manager to use
-        self.connection_manager = BLEConnectionManager()
         # we will have our own connection manager but a shared mutex for ble requests
         self.ble_mutex = queue.get_nowait()
     async def start_ble_logic(self):
@@ -81,8 +76,8 @@ class ListenThread(Process):
 
        while True:
            if service.message is not None:
-               self.ble_mutex.acquire()
-               self.connection_manager.send_message(service.message)
+               # starting a process to send a message
+               Process(target=send_message,args=service.message).start()
                # resetting the message
                service.message = None
                self.ble_mutex.release()
