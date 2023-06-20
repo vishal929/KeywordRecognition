@@ -16,6 +16,14 @@ class BluetoothListener(Process):
     """
 
     def __init__(self, mutex):
+        """
+        Constructor for our BluetoothListener
+
+        :param mutex:
+            We require a mutex to avoid deadlock in the messaging service.
+            From testing I found that connecting to a device sometimes starts a scan.
+            With multiple scans, we may run into BLE deadlock, so we acquire a mutex for this purpose.
+        """
         super().__init__()
         self.server_sock = BluetoothSocket(RFCOMM)
         self.server_sock.bind(("", PORT_ANY))
@@ -27,6 +35,11 @@ class BluetoothListener(Process):
         self.mutex = mutex
 
     def run(self):
+        """
+        Runnable for our bluetooth listener service
+        We continually accept 1 client connection on the bluetooth socket and listen to messages.
+        :return: void
+        """
         advertise_service(self.server_sock, "SampleServer", service_id=self.serial_uuid,
                           service_classes=[self.serial_uuid, SERIAL_PORT_CLASS],
                           )

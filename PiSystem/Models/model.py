@@ -6,6 +6,19 @@ from PiSystem.constants import ROOT_DIR
 
 def conv_block(model_input, num_filters, kernel_size, conv_stride, pool_size, dropout_rate=0.2, pool_stride=None,
                padding='same'):
+    """
+    Definition of a conv block in our model, inspired by the blocks in resnet.
+    We use leaky relu, residual connections, batch normalization, and dropout.
+    :param model_input: This is the keras input
+    :param num_filters: Number of filters to use in our convolutions
+    :param kernel_size: Kernel size to use in our convolutions
+    :param conv_stride: Stride to use in our convolutions in each dimension
+    :param pool_size: spatial size to use for pooling
+    :param dropout_rate: Probability of an activation being set to zero in the dropout layer
+    :param pool_stride: Stride to use for pooling
+    :param padding: padding to apply to pooling and convolution operations
+    :return: We return a keras layer output representing the output of this conv block
+    """
     # conv
     x = tf.keras.layers.Conv2D(filters=num_filters, padding=padding,
                                kernel_size=kernel_size, strides=conv_stride, activation=None)(model_input)
@@ -40,10 +53,12 @@ def conv_block(model_input, num_filters, kernel_size, conv_stride, pool_size, dr
     return x
 
 
-# using functional API to build our model
-# we are using a convolutional model, which should be channels last (for maximum support across platforms)
-# if we have a checkpoint, we load from the checkpoint, otherwise we build from scratch
 def build_model(checkPointPath=None):
+    """
+    Keras functional API construction of our model
+    :param checkPointPath: if we have a checkpoint, we load from the checkpoint, otherwise we build from scratch
+    :return: We return a Keras compiled model that we can use for training,evaluation, and inference
+    """
     # only need a small architecture for keywords
     # the architecture is inspired by resnet but we are using much fewer conv blocks
     # B x H x W x C
@@ -81,13 +96,19 @@ def build_model(checkPointPath=None):
 
 
 '''
-    Constructs a tflite model interpreter from our keras trained weights
+    
     keras_saved_dir is the directory to find the keras model that we have already trained
     we save the converted model to disk so that the raspberry pi can just load that instead of converting
 '''
 
 
 def grab_tflite_model(keras_saved_dir):
+    """
+    Constructs a tflite model interpreter from our keras trained weights
+
+    :param keras_saved_dir: directory to find the keras model that we have already trained
+    :return: We return a tflite interpreter representing the converted tflite model
+    """
     tflite_save_dir = os.path.join(ROOT_DIR, 'Models', 'model.tflite')
     if os.path.exists(tflite_save_dir):
         # just load from file
