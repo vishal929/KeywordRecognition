@@ -119,7 +119,6 @@ async def send_message_async(class_tag):
     if device is None:
         print('failed to find the device')
         return
-    await BleakScanner.stop()
 
     print(device)
 
@@ -131,7 +130,6 @@ async def send_message_async(class_tag):
         rx_char = nus.get_characteristic(UART_RX_CHAR_UUID)
         await client.write_gatt_char(rx_char, class_tag.encode('ascii'))
         await client.disconnect()
-    await BleakScanner.stop()
 
 
     '''
@@ -172,7 +170,10 @@ async def send_message_async(class_tag):
 
 def send_message(class_tag,ble_mutex):
     ble_mutex.acquire()
-    asyncio.run(send_message_async(class_tag))
+    try:
+        asyncio.run(send_message_async(class_tag))
+    except Exception as e:
+        print('exception while sending message: ' + str(e))
     ble_mutex.release()
 
 if __name__ == '__main__':
