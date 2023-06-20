@@ -25,13 +25,6 @@ class BluetoothListener(Process):
             With multiple scans, we may run into BLE deadlock, so we acquire a mutex for this purpose.
         """
         super().__init__()
-        self.server_sock = BluetoothSocket(RFCOMM)
-        self.server_sock.bind(("", PORT_ANY))
-        self.server_sock.listen(1)
-
-        self.port = self.server_sock.getsockname()[1]
-
-        self.serial_uuid = "94f39d29-7d6d-437d-973b-fba39e49d4ee"
         self.mutex = mutex
 
     def run(self):
@@ -40,13 +33,20 @@ class BluetoothListener(Process):
         We continually accept 1 client connection on the bluetooth socket and listen to messages.
         :return: void
         """
-        advertise_service(self.server_sock, "SampleServer", service_id=self.serial_uuid,
-                          service_classes=[self.serial_uuid, SERIAL_PORT_CLASS],
+        server_sock = BluetoothSocket(RFCOMM)
+        server_sock.bind(("", PORT_ANY))
+        server_sock.listen(1)
+
+        port = server_sock.getsockname()[1]
+
+        serial_uuid = "94f39d29-7d6d-437d-973b-fba39e49d4ee"
+        advertise_service(server_sock, "SampleServer", service_id=serial_uuid,
+                          service_classes=[serial_uuid, SERIAL_PORT_CLASS],
                           )
         while True:
-            print("Waiting for connection on RFCOMM channel", self.port)
+            print("Waiting for connection on RFCOMM channel", port)
 
-            client_sock, client_info = self.server_sock.accept()
+            client_sock, client_info = server_sock.accept()
             print("Accepted connection from", client_info)
 
             try:
