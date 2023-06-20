@@ -54,7 +54,7 @@ def train_model(model_checkpoint=None, batch_size=4, learning_rate=0.00005, epoc
         train = prepare_dataset(train)
         # removing labels (dont need them for normalization)
         train = train.map(lambda example, label: example)
-        #print('actual input shape: ' + str(next(iter(train))))
+        # print('actual input shape: ' + str(next(iter(train))))
         # adapting the normalization layer of the model to the dataset
         model.layers[1].adapt(train)
         # model.get_layer("normalization").adapt(list(iter(train)))
@@ -75,9 +75,10 @@ def train_model(model_checkpoint=None, batch_size=4, learning_rate=0.00005, epoc
     model.fit(train, validation_data=test, epochs=epochs, verbose=2, callbacks=[model_checkpoint_callback,
                                                                                 MemoryPrintingCallback()])
 
+
 def evaluate():
-    model = build_model(os.path.join(ROOT_DIR,"Models","Saved_Checkpoints","Current_Checkpoint"))
-    train,test = get_dataset()
+    model = build_model(os.path.join(ROOT_DIR, "Models", "Saved_Checkpoints", "Current_Checkpoint"))
+    train, test = get_dataset()
     test = prepare_dataset(test).batch(batch_size=4, num_parallel_calls=tf.data.AUTOTUNE)
     train = prepare_dataset(train).batch(batch_size=4, num_parallel_calls=tf.data.AUTOTUNE)
     print('evaluate on test')
@@ -85,5 +86,6 @@ def evaluate():
     print('evaluate on train')
     model.evaluate(train)
 
+
 train_model()
-#evaluate()
+# evaluate()

@@ -95,13 +95,6 @@ def build_model(checkPointPath=None):
     return model
 
 
-'''
-    
-    keras_saved_dir is the directory to find the keras model that we have already trained
-    we save the converted model to disk so that the raspberry pi can just load that instead of converting
-'''
-
-
 def grab_tflite_model(keras_saved_dir):
     """
     Constructs a tflite model interpreter from our keras trained weights
