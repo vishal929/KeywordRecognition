@@ -120,7 +120,7 @@ class BluetoothListener(Process):
                 if not message:
                     break
                 # processing the message
-                proc = Process(target=send_message, args=(message, self.mutex))
+                proc = Process(target=send_message, args=(message.decode('ascii'), self.mutex))
                 proc.start()
         except OSError:
             pass
