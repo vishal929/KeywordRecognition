@@ -5,6 +5,7 @@
 from bluetooth import BluetoothSocket,PORT_ANY,RFCOMM,SERIAL_PORT_PROFILE,SERIAL_PORT_CLASS,advertise_service
 import asyncio
 from threading import Thread
+from multiprocessing import Lock
 
 from bluez_peripheral.gatt.service import Service
 from bluez_peripheral.gatt.characteristic import characteristic, CharacteristicFlags as CharFlags
@@ -88,7 +89,7 @@ class ListenThread(Process):
 '''
 
 class BluetoothListener(Process):
-    def __init__(self):
+    def __init__(self,mutex):
         super().__init__()
         self.server_sock = BluetoothSocket(RFCOMM)
         self.server_sock.bind(("", PORT_ANY))
@@ -97,6 +98,7 @@ class BluetoothListener(Process):
         self.port = self.server_sock.getsockname()[1]
 
         self.serial_uuid = "94f39d29-7d6d-437d-973b-fba39e49d4ee"
+        self.mutex = mutex
         # rx_uuid = "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"
         # tx_uuid = "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"
         # uuid = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"
@@ -114,10 +116,12 @@ class BluetoothListener(Process):
 
         try:
             while True:
-                data = client_sock.recv(1024)
-                if not data:
+                message = client_sock.recv(1024)
+                if not message:
                     break
-                print("Received", data)
+                # processing the message
+                proc = Process(target=send_message, args=(message, self.mutex))
+                proc.start()
         except OSError:
             pass
 
@@ -128,7 +132,8 @@ class BluetoothListener(Process):
         print("All done.")
 
 if __name__=="__main__":
-    proc = BluetoothListener()
+    lock = Lock()
+    proc = BluetoothListener(lock)
     proc.start()
     proc.join()
 

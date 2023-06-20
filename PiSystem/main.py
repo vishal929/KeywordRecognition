@@ -17,7 +17,7 @@ import tensorflow as tf
 import numpy as np
 import sounddevice as sd
 from Messaging.message import send_message
-from Listener.listen import ListenerService, uuid, ListenThread
+from Listener.listen import BluetoothListener
 from multiprocessing import Lock,Process
 
 
@@ -60,7 +60,7 @@ async def main():
     ble_lock = Lock()
     listen_queue = queue.Queue()
     listen_queue.put(ble_lock,block=True)
-    listen_thread = ListenThread(ble_lock)
+    listen_thread = BluetoothListener()
     listen_thread.start()
 
     # counting the time for windows
