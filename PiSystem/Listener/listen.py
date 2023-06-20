@@ -14,6 +14,7 @@ class BluetoothListener(Process):
         This allows me to communicate with the raspberry pi through bluetooth from my phone,
         and so I can activate switches that way
     """
+
     def __init__(self, mutex):
         super().__init__()
         self.server_sock = BluetoothSocket(RFCOMM)
@@ -25,29 +26,28 @@ class BluetoothListener(Process):
         self.serial_uuid = "94f39d29-7d6d-437d-973b-fba39e49d4ee"
         self.mutex = mutex
 
-    def run(self) -> None:
+    def run(self):
         advertise_service(self.server_sock, "SampleServer", service_id=self.serial_uuid,
                           service_classes=[self.serial_uuid, SERIAL_PORT_CLASS],
                           )
+        while True:
+            print("Waiting for connection on RFCOMM channel", self.port)
 
-        print("Waiting for connection on RFCOMM channel", self.port)
+            client_sock, client_info = self.server_sock.accept()
+            print("Accepted connection from", client_info)
 
-        client_sock, client_info = self.server_sock.accept()
-        print("Accepted connection from", client_info)
+            try:
+                while True:
+                    message = client_sock.recv(1024)
+                    if not message:
+                        break
+                    # sending the message in a new process
+                    Process(target=send_message, args=(message.decode('ascii'), self.mutex)).start()
+            except OSError:
+                pass
 
-        try:
-            while True:
-                message = client_sock.recv(1024)
-                if not message:
-                    break
-                # sending the message in a new process
-                Process(target=send_message, args=(message.decode('ascii'), self.mutex)).start()
-        except OSError:
-            pass
-
-        client_sock.close()
-        self.server_sock.close()
-        print("All done.")
+            client_sock.close()
+            print("All done.")
 
 
 if __name__ == "__main__":
