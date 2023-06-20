@@ -96,13 +96,13 @@ class BluetoothListener(Process):
 
         self.port = self.server_sock.getsockname()[1]
 
-        serial_uuid = "94f39d29-7d6d-437d-973b-fba39e49d4ee"
+        self.serial_uuid = "94f39d29-7d6d-437d-973b-fba39e49d4ee"
         # rx_uuid = "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"
         # tx_uuid = "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"
         # uuid = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"
     def run(self) -> None:
         advertise_service(self.server_sock, "SampleServer", service_id=uuid,
-                          service_classes=[uuid, SERIAL_PORT_CLASS],
+                          service_classes=[self.serial_uuid, SERIAL_PORT_CLASS],
                           # profiles=[SERIAL_PORT_PROFILE],
                           # protocols=[OBEX_UUID]
                           )
