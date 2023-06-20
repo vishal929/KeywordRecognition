@@ -51,6 +51,7 @@ class BluetoothListener(Process):
 
 
 if __name__ == "__main__":
+    # testing
     lock = Lock()
     proc = BluetoothListener(lock)
     proc.start()

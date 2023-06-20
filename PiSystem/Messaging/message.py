@@ -14,7 +14,7 @@ async def send_message_async(class_tag):
     wrapped to be called in a separate thread/process
 
 
-    :parameter class_tag: This should be the name of the switch to trigger i.e "stairs","bar",etc.
+    :param class_tag: This should be the name of the switch to trigger i.e "stairs","bar",etc.
     The valid class tags can be viewed in PiSystem/constants.py
 
     """

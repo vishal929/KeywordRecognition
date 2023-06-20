@@ -1,32 +1,33 @@
 # main will hold the inference loop of the pi
-'''
+"""
     1) detect speech in 3 second windows of "arduino"
     2) if arduino is detected, start to detect for the other keywords like "Stairs" or "Bar"
     3) if within the detection window we detect a keyword, we send a message to the corresponding microcontroller
     4) hopefully microcontroller receives the message properly and flips their designated switch
-'''
-import asyncio
+
+    In addition...
+    1) listen on bluetooth serial service for incoming messages from bluetooth devices
+    2) if the incoming message is a valid class, flip the switches class
+"""
+import os
 import queue
-from threading import Thread
+from multiprocessing import Lock, Process
 from time import time
 
-from Models.model import grab_tflite_model
-import os
-from constants import ROOT_DIR,INV_MAP,SAMPLING_RATE
-import tensorflow as tf
 import numpy as np
 import sounddevice as sd
-from Messaging.message import send_message
+import tensorflow as tf
+
 from Listener.listen import BluetoothListener
-from multiprocessing import Lock,Process
+from Messaging.message import send_message
+from Models.model import grab_tflite_model
+from constants import ROOT_DIR, INV_MAP, SAMPLING_RATE
 
-
-
-async def main():
-    checkpoint_path = os.path.join(ROOT_DIR,"Models","Saved_Checkpoints","Current_Checkpoint")
+if __name__ == '__main__':
+    checkpoint_path = os.path.join(ROOT_DIR, "Models", "Saved_Checkpoints", "Current_Checkpoint")
 
     # initialize our BLE connections to our nrf58240 boards
-    #connection_manager = BLEConnectionManager()
+    # connection_manager = BLEConnectionManager()
 
     # grab our tflite model interpreter
     interpreter = grab_tflite_model(checkpoint_path)
@@ -41,26 +42,28 @@ async def main():
     prob_threshold = 0.7
 
     # setup buffer for holding 3s of audio data
-    recording_samples = np.zeros(3*SAMPLING_RATE)
+    recording_samples = np.zeros(3 * SAMPLING_RATE)
     recording_queue = queue.Queue(maxsize=12)
 
     # check our sound devices
     print(sd.query_devices())
 
     # setting up callback function for audio recording
-    def record_callback(indata, frames,time, status):
-        recording_queue.put(np.copy(indata[:,0]))
+    def record_callback(indata, frames, time, status):
+        recording_queue.put(np.copy(indata[:, 0]))
+
 
     # setup continuous recording callback
-    stream = sd.InputStream(samplerate=SAMPLING_RATE,blocksize=1*SAMPLING_RATE,channels=1,callback=record_callback,dtype='int16')
+    stream = sd.InputStream(samplerate=SAMPLING_RATE, blocksize=1 * SAMPLING_RATE, channels=1, callback=record_callback,
+                            dtype='int16')
 
     # we want to setup a listener to listen to phone messages via ble to trigger switches also!
     # this can be done via nrf connect or adafruit connect apps through the uart writers
     # we need a lock for ble
     ble_lock = Lock()
     listen_queue = queue.Queue()
-    listen_queue.put(ble_lock,block=True)
-    listen_thread = BluetoothListener()
+    listen_queue.put(ble_lock, block=True)
+    listen_thread = BluetoothListener(ble_lock)
     listen_thread.start()
 
     # counting the time for windows
@@ -81,7 +84,7 @@ async def main():
                 continue
             # update our buffer
             # we first roll the old values, then update the end of the buffer with the new values
-            recording_samples = np.roll(recording_samples,-recording_sample.shape[0])
+            recording_samples = np.roll(recording_samples, -recording_sample.shape[0])
             # updating the most recent part of the buffer with the new elements
             recording_samples[-recording_sample.shape[0]:] = recording_sample
 
@@ -119,17 +122,14 @@ async def main():
                     print('arduino window initiated with probability: ' + str(prob))
                     arduino_flag = True
                     # resetting the time and our buffer
-                    recording_samples = np.zeros(3*SAMPLING_RATE)
+                    recording_samples = np.zeros(3 * SAMPLING_RATE)
                     s = time()
                     continue
                 elif arduino_flag and detected_class != 'arduino' and detected_class != 'silence':
                     # we are in the detection window, and we have detected a keyword that is not silence
                     # lets send a message to the corresponding microcontroller and reset the detection flag
                     print('sending a message to class: ' + str(detected_class) + ' with probability: ' + str(prob))
-                    Process(target=send_message, args=(detected_class,ble_lock)).start()
-                    #ble_lock.acquire()
-                    #connection_manager.send_message(detected_class)
-                    #ble_lock.release()
+                    Process(target=send_message, args=(detected_class, ble_lock)).start()
                     arduino_flag = False
                     arduino_win_count = 0
                     print('arduino window stopped due to class given')
@@ -142,13 +142,10 @@ async def main():
             if arduino_flag:
                 new_time = time()
                 # updating elapsed time
-                arduino_win_count += new_time-s
+                arduino_win_count += new_time - s
                 s = new_time
                 if arduino_win_count >= 6:
                     # want to stop the window after 6 seconds has passed without a valid command
                     arduino_flag = False
                     arduino_win_count = 0
                     print('arduino window stopped due to time window')
-
-if __name__ == '__main__':
-    asyncio.run(main())
