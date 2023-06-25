@@ -13,6 +13,13 @@ BLEDfu bledfu; // OTA DFU service
 Servo theater;
 Servo bar;
 
+// pins
+const uint8_t theater_pin = 12;
+const uint8_t bar_pin = 13;
+// we will be using a logic level mosfet switch
+// to control battery load to conserve battery capacity
+const uint8_t switch_pin = 7;
+
 // trigger bytes for switching the servos
 const char* theater_name = "theater";
 const char* bar_name = "bar";
@@ -33,8 +40,11 @@ bool bar_on = false;
 
 
 void setup() {
-  theater.attach(12);
-  bar.attach(13);
+  theater.attach(theater_pin);
+  bar.attach(bar_pin);
+  // set the pin to send output to the mosfet switch
+  pinMode(switch_pin,OUTPUT);
+  digitalWrite(switch_pin,LOW);
   // put your setup code here, to run once:
   Serial.begin(115200);
 
@@ -179,11 +189,17 @@ void disconnect_callback(uint16_t conn_handle, uint8_t reason)
   which corresponds to flipping a physical switch
 */
 void flip_switch(Servo *servo, bool on){
+  digitalWrite(switch_pin,HIGH);
   if (on){
-    servo->write(30);
+    //servo->write(0);
+    servo->writeMicroseconds(300);
   } else{
-    servo->write(170);
+    //servo->write(180);
+    servo->writeMicroseconds(2600);
   }
+  // waiting a little bit for servo to get into position
+  delay(1000);
+  digitalWrite(switch_pin,LOW);
 }
 
 // function to format a string how we want
