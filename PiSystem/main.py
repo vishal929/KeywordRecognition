@@ -39,7 +39,7 @@ if __name__ == '__main__':
     # set constants needed during the inference loop
     arduino_flag = False
     arduino_win_count = 0
-    prob_threshold = 0.7
+    prob_threshold = 0.95
 
     # setup buffer for holding 3s of audio data
     recording_samples = np.zeros(3 * SAMPLING_RATE)
