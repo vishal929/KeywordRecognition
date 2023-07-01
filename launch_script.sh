@@ -2,7 +2,8 @@
 # run our python script and periodically check log file and truncate on max size
 
 
-python /home/vishal/Desktop/KeywordRecognition/PiSystem/main.py > /home/vishal/Desktop/KeywordLog.txt
+#python /home/vishal/Desktop/KeywordRecognition/PiSystem/main.py > /home/vishal/Desktop/KeywordLog.txt
+python /home/vishal/Desktop/KeywordRecognition/PiSystem/bluetooth_listener.py > /home/vishal/Desktop/KeywordLog.txt
 
 while true
 do
