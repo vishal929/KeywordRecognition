@@ -2,20 +2,20 @@
 # the idea is that in addition to triggering switches with voice, I could also trigger via phone
 # this code is based on the rfcomm server example code in pybluez git repo
 
-from multiprocessing import Lock 
+from multiprocessing import Process,Lock 
 # below import is for serial option
 from bluetooth import BluetoothSocket, PORT_ANY, RFCOMM, SERIAL_PORT_CLASS, advertise_service
 from PiSystem.Messaging.message import send_message
 
 
-class BluetoothListener():
+class BluetoothListener(Process):
     """
         BluetoothListener is a process that listens for incoming messages via bluetooth.
         This allows me to communicate with the raspberry pi through bluetooth from my phone,
         and so I can activate switches that way
     """
 
-    def __init__(self, mutex):
+    def __init__(self, mutex, port):
         """
         Constructor for our BluetoothListener
 
@@ -26,15 +26,16 @@ class BluetoothListener():
         """
         super().__init__()
         self.mutex = mutex
+        self.port = port
 
-    def listen(self):
+    def run(self):
         """
         Runnable for our bluetooth listener service
         We continually accept 1 client connection on the bluetooth socket and listen to messages.
         :return: void
         """
         server_sock = BluetoothSocket(RFCOMM)
-        server_sock.bind(("", PORT_ANY))
+        server_sock.bind(("", self.port))
         server_sock.listen(1)
 
         port = server_sock.getsockname()[1]
@@ -44,14 +45,9 @@ class BluetoothListener():
                           service_classes=[serial_uuid, SERIAL_PORT_CLASS],
                           )
 
-        if os.fork()==0:
-            # 1 child process will listen
-            handle_message("child")
+        self.handle_message(self.port) 
 
-        # the parent will also listen
-        handle_message("parent")
-
-    def handle_message(process_id):
+    def handle_message(self,port):
         """ 
         Handling clients
         """
@@ -59,7 +55,7 @@ class BluetoothListener():
             print("Waiting for connection on RFCOMM channel", port)
 
             client_sock, client_info = server_sock.accept()
-            print("Accepted connection from ", client_info, " in " + process_id)
+            print("Accepted connection from ", client_info)
 
             try:
                 while True:

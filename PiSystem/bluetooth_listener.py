@@ -15,7 +15,12 @@ from PiSystem.Listener.listen import BluetoothListener
 if __name__ == '__main__':
     # we need a lock for ble connections
     ble_lock = Lock()
-    # creating our connection handler
+    # creating our connection handler for main thread
     listener = BluetoothListener(ble_lock)
+    
+    # creating separate listener for alternate thread
+    alt_listener = BluetoothListener(ble_lock)
 
-    listener.listen()
+    alt_listener.start()
+    listener.run()
+
