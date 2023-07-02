@@ -46,12 +46,12 @@ class BluetoothListener():
 
         if os.fork()==0:
             # 1 child process will listen
-            handle_message("child")
+            self.handle_message("child")
 
         # the parent will also listen
-        handle_message("parent")
+        self.handle_message("parent")
 
-    def handle_message(process_id):
+    def handle_message(self,process_id):
         """ 
         Handling clients
         """
