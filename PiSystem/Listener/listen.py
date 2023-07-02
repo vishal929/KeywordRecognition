@@ -44,7 +44,7 @@ class BluetoothListener():
                           service_classes=[serial_uuid, SERIAL_PORT_CLASS],
                           )
         while True:
-            print("Waiting for connection on RFCOMM channel", self.port)
+            print("Waiting for connection on RFCOMM channel", port)
 
             client_sock, client_info = server_sock.accept()
             print("Accepted connection from ", client_info)
