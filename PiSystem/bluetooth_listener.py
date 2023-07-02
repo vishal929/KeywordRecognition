@@ -16,11 +16,13 @@ if __name__ == '__main__':
     # we need a lock for ble connections
     ble_lock = Lock()
     # creating our connection handler for main thread
-    listener = BluetoothListener(ble_lock)
+    listener = BluetoothListener(ble_lock,1)
     
     # creating separate listener for alternate thread
-    alt_listener = BluetoothListener(ble_lock)
+    alt_listener = BluetoothListener(ble_lock,2)
 
     alt_listener.start()
     listener.run()
+    alt_listener.join()
+    print('unexpected')
 
