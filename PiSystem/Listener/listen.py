@@ -4,10 +4,9 @@
 
 from multiprocessing import Lock 
 # below import is for serial option
-#from bluetooth import BluetoothSocket, PORT_ANY, RFCOMM, SERIAL_PORT_CLASS, advertise_service
-import socket
+from bluetooth import BluetoothSocket, PORT_ANY, RFCOMM, SERIAL_PORT_CLASS, advertise_service
 from PiSystem.Messaging.message import send_message
-import os
+
 
 class BluetoothListener():
     """
@@ -34,23 +33,33 @@ class BluetoothListener():
         We continually accept 1 client connection on the bluetooth socket and listen to messages.
         :return: void
         """
-        b_adapter = 'dc:a6:32:85:26:96'
-        port = 3
-        s = socket.socket(socket.AF_BLUETOOTH,socket.SOCK_STREAM,socket.BTPROTO_RFCOMM)
-        s.bind((b_adapter,port))
-        s.listen(1)
-        self.handle_message(s,port)
+        server_sock = BluetoothSocket(RFCOMM)
+        server_sock.bind(("", PORT_ANY))
+        server_sock.listen(1)
 
+        port = server_sock.getsockname()[1]
 
-    def handle_message(self,sock):
+        serial_uuid = "94f39d29-7d6d-437d-973b-fba39e49d4ee"
+        advertise_service(server_sock, "SampleServer", service_id=serial_uuid,
+                          service_classes=[serial_uuid, SERIAL_PORT_CLASS],
+                          )
+
+        if os.fork()==0:
+            # 1 child process will listen
+            handle_message("child")
+
+        # the parent will also listen
+        handle_message("parent")
+
+    def handle_message(process_id):
         """ 
         Handling clients
         """
         while True:
             print("Waiting for connection on RFCOMM channel", port)
 
-            client_sock, client_info = sock.accept()
-            print("Accepted connection from ", client_info)
+            client_sock, client_info = server_sock.accept()
+            print("Accepted connection from ", client_info, " in " + process_id)
 
             try:
                 while True:
@@ -59,7 +68,6 @@ class BluetoothListener():
                         break
                     # sending the message in a new process
                     Process(target=send_message, args=(message.decode('ascii'), self.mutex)).start()
-                    #send_message(message.decode('ascii'),self.mutex)
             except OSError:
                 pass
 
