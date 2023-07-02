@@ -6,7 +6,7 @@ from multiprocessing import Lock
 # below import is for serial option
 from bluetooth import BluetoothSocket, PORT_ANY, RFCOMM, SERIAL_PORT_CLASS, advertise_service
 from PiSystem.Messaging.message import send_message
-
+import os
 
 class BluetoothListener():
     """
