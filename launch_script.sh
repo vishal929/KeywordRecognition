@@ -14,5 +14,5 @@ do
 		truncate -s 0 /home/vishal/Desktop/KeywordLog.txt
 	fi	
 	# sleeping so that this isnt a super busy while loop
-	sleep(3600)
+	sleep 3600
 done
