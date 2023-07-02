@@ -39,7 +39,7 @@ class BluetoothListener():
         s = socket.socket(socket.AF_BLUETOOTH,socket.SOCK_STREAM,socket.BTPROTO_RFCOMM)
         s.bind((b_adapter,port))
         s.listen(1)
-        self.handle_message(s)
+        self.handle_message(s,port)
 
 
     def handle_message(self,sock):
@@ -50,7 +50,7 @@ class BluetoothListener():
             print("Waiting for connection on RFCOMM channel", port)
 
             client_sock, client_info = sock.accept()
-            print("Accepted connection from ", client_info, " in " + process_id)
+            print("Accepted connection from ", client_info)
 
             try:
                 while True:
