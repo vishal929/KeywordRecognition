@@ -2,13 +2,13 @@
 # the idea is that in addition to triggering switches with voice, I could also trigger via phone
 # this code is based on the rfcomm server example code in pybluez git repo
 
-from multiprocessing import Lock, Process
+from multiprocessing import Lock 
 # below import is for serial option
 from bluetooth import BluetoothSocket, PORT_ANY, RFCOMM, SERIAL_PORT_CLASS, advertise_service
 from PiSystem.Messaging.message import send_message
 
 
-class BluetoothListener(Process):
+class BluetoothListener():
     """
         BluetoothListener is a process that listens for incoming messages via bluetooth.
         This allows me to communicate with the raspberry pi through bluetooth from my phone,
@@ -27,7 +27,7 @@ class BluetoothListener(Process):
         super().__init__()
         self.mutex = mutex
 
-    def run(self):
+    def listen(self):
         """
         Runnable for our bluetooth listener service
         We continually accept 1 client connection on the bluetooth socket and listen to messages.
@@ -43,11 +43,23 @@ class BluetoothListener(Process):
         advertise_service(server_sock, "SampleServer", service_id=serial_uuid,
                           service_classes=[serial_uuid, SERIAL_PORT_CLASS],
                           )
+
+        if os.fork()==0:
+            # 1 child process will listen
+            handle_message("child")
+
+        # the parent will also listen
+        handle_message("parent")
+
+    def handle_message(process_id):
+        """ 
+        Handling clients
+        """
         while True:
             print("Waiting for connection on RFCOMM channel", port)
 
             client_sock, client_info = server_sock.accept()
-            print("Accepted connection from", client_info)
+            print("Accepted connection from ", client_info, " in " + process_id)
 
             try:
                 while True:
