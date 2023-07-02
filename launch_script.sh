@@ -3,12 +3,12 @@
 
 
 #python /home/vishal/Desktop/KeywordRecognition/PiSystem/main.py > /home/vishal/Desktop/KeywordLog.txt
-python /home/vishal/Desktop/KeywordRecognition/PiSystem/bluetooth_listener.py > /home/vishal/Desktop/KeywordLog.txt
+python /home/vishal/Desktop/KeywordRecognition/PiSystem/bluetooth_listener.py > /home/vishal/Desktop/KeywordLog.txt &
 
 while true
 do
-	SIZE = $(stat -c %s "/home/vishal/Desktop/KeywordLog.txt")
-	if (SIZE -g $(20000 * 1024) )
+	FILE_SIZE=$(stat -c %s "/home/vishal/Desktop/KeywordLog.txt")
+	if [ $FILE_SIZE -gt $((20000*1024)) ]
 	then
 		# truncate the log file
 		truncate -s 0 /home/vishal/Desktop/KeywordLog.txt
