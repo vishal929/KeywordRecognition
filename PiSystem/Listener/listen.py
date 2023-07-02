@@ -15,7 +15,7 @@ class BluetoothListener(Process):
         and so I can activate switches that way
     """
 
-    def __init__(self, mutex, port):
+    def __init__(self, mutex, port,do_advertise=False):
         """
         Constructor for our BluetoothListener
 
@@ -27,6 +27,7 @@ class BluetoothListener(Process):
         super().__init__()
         self.mutex = mutex
         self.port = port
+        self.do_advertise = do_advertise
 
     def run(self):
         """
@@ -41,7 +42,8 @@ class BluetoothListener(Process):
         port = server_sock.getsockname()[1]
 
         serial_uuid = "94f39d29-7d6d-437d-973b-fba39e49d4ee"
-        advertise_service(server_sock, "SampleServer", service_id=serial_uuid,
+        if self.do_advertise:
+            advertise_service(server_sock, "SampleServer", service_id=serial_uuid,
                           service_classes=[serial_uuid, SERIAL_PORT_CLASS],
                           )
 
