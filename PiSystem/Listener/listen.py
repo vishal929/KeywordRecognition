@@ -2,7 +2,7 @@
 # the idea is that in addition to triggering switches with voice, I could also trigger via phone
 # this code is based on the rfcomm server example code in pybluez git repo
 
-from threading import Thread
+from threading import Thread,Lock
 # below import is for serial option
 from bluetooth import BluetoothSocket, PORT_ANY, RFCOMM, SERIAL_PORT_CLASS, advertise_service
 from PiSystem.Messaging.message import send_message
@@ -51,28 +51,26 @@ class BluetoothListener():
             Thread(target=handle_message,args=(client_sock,self.mutex)).start()
             
 
-    def handle_message(client_sock,ble_mutex):
-        """ 
-        Handling clients
-        """
-        try:
-            while True:
-                message = client_sock.recv(1024)
-                if not message:
-                    break
-                # sending the message
-                send_message(message.decode('ascii'),ble_mutex)
-                #Thread(target=send_message, args=(message.decode('ascii'), self.mutex)).start()
-            except OSError:
-                pass
+def handle_message(client_sock,ble_mutex):
+    """ 
+    Handling clients
+    """
+    try:
+        while True:
+            message = client_sock.recv(1024)
+            if not message:
+                break
+            # sending the message
+            send_message(message.decode('ascii'),ble_mutex)
+    except OSError:
+        pass
 
-        client_sock.close()
-        print("All done.")
+    client_sock.close()
+    print("All done.")
 
 
 if __name__ == "__main__":
     # testing
     lock = Lock()
     proc = BluetoothListener(lock)
-    proc.start()
-    proc.join()
+    proc.listen()
