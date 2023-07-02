@@ -2,20 +2,20 @@
 # the idea is that in addition to triggering switches with voice, I could also trigger via phone
 # this code is based on the rfcomm server example code in pybluez git repo
 
-from multiprocessing import Process,Lock 
+from threading import Thread
 # below import is for serial option
 from bluetooth import BluetoothSocket, PORT_ANY, RFCOMM, SERIAL_PORT_CLASS, advertise_service
 from PiSystem.Messaging.message import send_message
 
 
-class BluetoothListener(Process):
+class BluetoothListener():
     """
-        BluetoothListener is a process that listens for incoming messages via bluetooth.
+        BluetoothListener listens for incoming messages via bluetooth.
         This allows me to communicate with the raspberry pi through bluetooth from my phone,
         and so I can activate switches that way
     """
 
-    def __init__(self, mutex, port,do_advertise=False):
+    def __init__(self, mutex):
         """
         Constructor for our BluetoothListener
 
@@ -26,51 +26,48 @@ class BluetoothListener(Process):
         """
         super().__init__()
         self.mutex = mutex
-        self.port = port
-        self.do_advertise = do_advertise
 
-    def run(self):
+    def listen(self):
         """
         Runnable for our bluetooth listener service
         We continually accept 1 client connection on the bluetooth socket and listen to messages.
         :return: void
         """
         server_sock = BluetoothSocket(RFCOMM)
-        server_sock.bind(("", self.port))
+        server_sock.bind(("", PORT_ANY))
         server_sock.listen(1)
 
         port = server_sock.getsockname()[1]
 
         serial_uuid = "94f39d29-7d6d-437d-973b-fba39e49d4ee"
-        if self.do_advertise:
-            advertise_service(server_sock, "SampleServer", service_id=serial_uuid,
+        advertise_service(server_sock, "SampleServer", service_id=serial_uuid,
                           service_classes=[serial_uuid, SERIAL_PORT_CLASS],
                           )
-
-        self.handle_message(server_sock) 
-
-    def handle_message(self,server_sock):
-        """ 
-        Handling clients
-        """
         while True:
             print("Waiting for connection on RFCOMM channel", self.port)
 
             client_sock, client_info = server_sock.accept()
             print("Accepted connection from ", client_info)
+            Thread(target=handle_message,args=(client_sock,self.mutex)).start()
+            
 
-            try:
-                while True:
-                    message = client_sock.recv(1024)
-                    if not message:
-                        break
-                    # sending the message in a new process
-                    Process(target=send_message, args=(message.decode('ascii'), self.mutex)).start()
+    def handle_message(client_sock,ble_mutex):
+        """ 
+        Handling clients
+        """
+        try:
+            while True:
+                message = client_sock.recv(1024)
+                if not message:
+                    break
+                # sending the message
+                send_message(message.decode('ascii'),ble_mutex)
+                #Thread(target=send_message, args=(message.decode('ascii'), self.mutex)).start()
             except OSError:
                 pass
 
-            client_sock.close()
-            print("All done.")
+        client_sock.close()
+        print("All done.")
 
 
 if __name__ == "__main__":

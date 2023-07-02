@@ -8,7 +8,7 @@
 # this is harder than just sending a message via bluetooth anyway
 
 
-from multiprocessing import Lock
+from threading import Lock
 
 from PiSystem.Listener.listen import BluetoothListener
 
@@ -16,12 +16,6 @@ if __name__ == '__main__':
     # we need a lock for ble connections
     ble_lock = Lock()
     # creating our connection handler for main thread
-    listener = BluetoothListener(ble_lock,1)
+    listener = BluetoothListener(ble_lock)
     
-    # creating separate listener for alternate thread
-    alt_listener = BluetoothListener(ble_lock,2,do_advertise=True)
-    alt_listener.start()
-    listener.run()
-    alt_listener.join()
-    print('unexpected')
-
+    listener.listen()
