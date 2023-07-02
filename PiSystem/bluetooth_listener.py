@@ -19,8 +19,7 @@ if __name__ == '__main__':
     listener = BluetoothListener(ble_lock,1)
     
     # creating separate listener for alternate thread
-    alt_listener = BluetoothListener(ble_lock,2)
-
+    alt_listener = BluetoothListener(ble_lock,2,do_advertise=True)
     alt_listener.start()
     listener.run()
     alt_listener.join()
