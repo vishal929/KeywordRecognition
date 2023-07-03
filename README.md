@@ -19,3 +19,6 @@ The idea is to train a neural network on a more powerful
 machine, and then use the tensorflow lite framework
 to allow the raspberry pi to run inference.
 
+For more specific information, look at the READMEs in the 
+PiSystem and MicrocontrollerSystem directories
+
